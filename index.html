@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>파우더 벌크 최적 제조량 예측</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <img src="logo-full.png" alt="COSMAX" class="header-logo">
+      <div class="header-divider"></div>
+      <div>
+        <h1>파우더 벌크 제조량 예측 프로그램</h1>
+        <div class="header-team">생산3팀 & 생산운영팀</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 탭 네비게이션 -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('bom')">최적 제조량 예측</button>
+  </div>
+
+  <div class="content">
+    <!-- ==================== 최적 제조량 예측 ==================== -->
+    <div class="tab-content active" id="tab-bom">
+      <div class="bom-top-row">
+        <div class="section" style="flex:0 0 auto;margin-bottom:0">
+          <h2>파일 업로드</h2>
+          <div class="upload-row" style="flex-direction:column;gap:12px">
+            <div class="upload-item">
+              <label class="upload-btn bom-btn" for="bomFile">완제품 BOM 데이터</label>
+              <input type="file" id="bomFile" accept=".txt,.xlsx,.xls,.csv" style="display:none">
+              <span class="file-status" id="bomStatus">미등록</span>
+            </div>
+            <div class="upload-item">
+              <label class="upload-btn sap-btn" for="sapFile">표준 대비 실적 데이터</label>
+              <input type="file" id="sapFile" accept=".csv,.xlsx,.xls" style="display:none">
+              <span class="file-status" id="sapStatus">미등록</span>
+            </div>
+            <div class="upload-item">
+              <label class="upload-btn return-btn" for="returnFile">환입/폐기 벌크 데이터</label>
+              <input type="file" id="returnFile" accept=".csv,.xlsx,.xls" style="display:none">
+              <span class="file-status" id="returnStatus">미등록</span>
+            </div>
+          </div>
+        </div>
+        <div class="section" id="bomOrderSection" style="flex:1;margin-bottom:0;display:none">
+          <h2>완제품 발주 수량 입력</h2>
+          <div id="bomOrderInputs"></div>
+          <button class="predict-btn" onclick="calcBomNeeds()" style="margin-top:10px">벌크 필요량 계산</button>
+        </div>
+      </div>
+
+      <!-- BOM 트리 결과 -->
+      <div class="section" id="bomResultSection" style="display:none">
+        <div class="bom-nav-header">
+          <button class="bom-nav-btn" id="bomPrevBtn" onclick="bomNavPrev()">&lt;</button>
+          <h2 id="bomTitle">BOM 구조</h2>
+          <button class="bom-nav-btn" id="bomNextBtn" onclick="bomNavNext()">&gt;</button>
+        </div>
+        <div id="bomTree"></div>
+      </div>
+
+    </div>
+
+    <!-- 로딩 화면 -->
+    <div class="loading-overlay" id="loadingOverlay" style="display:none">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">데이터 로딩 중...</div>
+    </div>
+  </div>
+
+  <script src="ml_predictions.js"></script>
+  <script src="script.js"></script>
+  <script src="bom.js"></script>
+</body>
+</html>

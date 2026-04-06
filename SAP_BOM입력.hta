@@ -1,0 +1,181 @@
+<html>
+<head>
+<title>SAP BOM 조회</title>
+<HTA:APPLICATION
+  ID="oHTA"
+  APPLICATIONNAME="SAP BOM 조회"
+  BORDER="dialog"
+  BORDERSTYLE="normal"
+  INNERBORDER="no"
+  CAPTION="yes"
+  MAXIMIZEBUTTON="no"
+  MINIMIZEBUTTON="no"
+  SCROLL="no"
+  SINGLEINSTANCE="yes"
+  SYSMENU="yes"
+/>
+<style>
+  body { font-family: Malgun Gothic, sans-serif; margin: 0; padding: 20px; background: #f7f8fa; }
+  h2 { font-size: 16px; margin: 0 0 4px; color: #1a1a1a; }
+  .sub { font-size: 12px; color: #999; margin-bottom: 16px; }
+  .row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+  .row-num { font-weight: 700; font-size: 14px; color: #666; min-width: 20px; text-align: center; }
+  .row input { padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+  .code-input { width: 160px; }
+  .qty-input { width: 120px; text-align: right; }
+  .lbl { font-size: 11px; color: #999; font-weight: 600; }
+  .header-row { display: flex; gap: 10px; margin-bottom: 6px; padding-left: 28px; }
+  .btns { margin-top: 16px; display: flex; gap: 8px; }
+  .btn { padding: 9px 24px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn-ok { background: #1a1a1a; color: #fff; }
+  .btn-cancel { background: #e0e0e0; color: #333; }
+</style>
+<script language="VBScript">
+  Sub Window_onLoad
+    window.resizeTo 420, 380
+    Dim sw, sh
+    sw = window.screen.availWidth
+    sh = window.screen.availHeight
+    window.moveTo (sw - 420) / 2, (sh - 380) / 2
+    document.getElementById("code1").focus
+  End Sub
+
+  Sub Window_onUnload
+    Dim fso2, wshShell2, flagPath2
+    Set fso2 = CreateObject("Scripting.FileSystemObject")
+    Set wshShell2 = CreateObject("WScript.Shell")
+    flagPath2 = wshShell2.ExpandEnvironmentStrings("%TEMP%") & "\bom_done.flag"
+    If Not fso2.FileExists(flagPath2) Then
+      Dim tempCheck
+      tempCheck = wshShell2.ExpandEnvironmentStrings("%TEMP%") & "\bom_input.txt"
+      If Not fso2.FileExists(tempCheck) Then
+        Dim ff2
+        Set ff2 = fso2.CreateTextFile(flagPath2, True)
+        ff2.WriteLine "cancel"
+        ff2.Close
+        Set ff2 = Nothing
+      End If
+    End If
+    Set fso2 = Nothing
+    Set wshShell2 = Nothing
+  End Sub
+
+  Sub FormatQtyField(field)
+    ' 숫자 외 문자 제거
+    Dim raw, i, ch, cleaned
+    raw = field.value
+    cleaned = ""
+    For i = 1 To Len(raw)
+      ch = Mid(raw, i, 1)
+      If ch >= "0" And ch <= "9" Then cleaned = cleaned & ch
+    Next
+    If cleaned = "" Then
+      field.value = ""
+      Exit Sub
+    End If
+    Dim formatted
+    formatted = FormatNumber(CDbl(cleaned), 0, -1, 0, -1)
+    If field.value <> formatted Then
+      field.value = formatted
+      ' 커서를 맨 뒤로
+      Dim rng
+      Set rng = field.createTextRange()
+      rng.collapse False
+      rng.select
+    End If
+  End Sub
+
+  Sub HandleEnter(field, nextId)
+    If window.event.keyCode = 13 Then
+      If nextId <> "" Then
+        document.getElementById(nextId).focus
+      Else
+        DoOK
+      End If
+    End If
+  End Sub
+
+  Sub DoOK
+    Dim fso, wshShell, tempPath, f
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set wshShell = CreateObject("WScript.Shell")
+    tempPath = wshShell.ExpandEnvironmentStrings("%TEMP%") & "\bom_input.txt"
+
+    Set f = fso.CreateTextFile(tempPath, True)
+    Dim i
+    For i = 1 To 5
+      Dim codeEl, qtyEl
+      Set codeEl = document.getElementById("code" & i)
+      Set qtyEl = document.getElementById("qty" & i)
+      Dim c, q
+      c = Trim(codeEl.value)
+      q = Trim(Replace(qtyEl.value, ",", ""))
+      If c <> "" Then
+        f.WriteLine c & "|" & q
+      End If
+    Next
+    f.Close
+    Set f = Nothing
+    Set fso = Nothing
+    Set wshShell = Nothing
+    self.close
+  End Sub
+
+  Sub DoCancel
+    Dim fso, wshShell, flagPath
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set wshShell = CreateObject("WScript.Shell")
+    ' 취소 플래그 생성
+    flagPath = wshShell.ExpandEnvironmentStrings("%TEMP%") & "\bom_done.flag"
+    Dim ff
+    Set ff = fso.CreateTextFile(flagPath, True)
+    ff.WriteLine "cancel"
+    ff.Close
+    Set ff = Nothing
+    Set fso = Nothing
+    Set wshShell = Nothing
+    self.close
+  End Sub
+</script>
+</head>
+<body>
+  <h2>SAP BOM 조회 - 완제품 입력</h2>
+  <div class="sub">최대 5개 / 완제품 코드와 발주 수량을 함께 입력하세요</div>
+
+  <div class="header-row">
+    <span class="lbl" style="width:160px">완제품 코드</span>
+    <span class="lbl" style="width:120px">발주 수량</span>
+  </div>
+
+  <div class="row">
+    <span class="row-num">1</span>
+    <input type="text" class="code-input" id="code1" placeholder="완제품 코드" onkeypress="HandleEnter Me, 'qty1'">
+    <input type="text" class="qty-input" id="qty1" placeholder="수량" onkeyup="FormatQtyField Me" onkeypress="HandleEnter Me, 'code2'">
+  </div>
+  <div class="row">
+    <span class="row-num">2</span>
+    <input type="text" class="code-input" id="code2" placeholder="완제품 코드" onkeypress="HandleEnter Me, 'qty2'">
+    <input type="text" class="qty-input" id="qty2" placeholder="수량" onkeyup="FormatQtyField Me" onkeypress="HandleEnter Me, 'code3'">
+  </div>
+  <div class="row">
+    <span class="row-num">3</span>
+    <input type="text" class="code-input" id="code3" placeholder="완제품 코드" onkeypress="HandleEnter Me, 'qty3'">
+    <input type="text" class="qty-input" id="qty3" placeholder="수량" onkeyup="FormatQtyField Me" onkeypress="HandleEnter Me, 'code4'">
+  </div>
+  <div class="row">
+    <span class="row-num">4</span>
+    <input type="text" class="code-input" id="code4" placeholder="완제품 코드" onkeypress="HandleEnter Me, 'qty4'">
+    <input type="text" class="qty-input" id="qty4" placeholder="수량" onkeyup="FormatQtyField Me" onkeypress="HandleEnter Me, 'code5'">
+  </div>
+  <div class="row">
+    <span class="row-num">5</span>
+    <input type="text" class="code-input" id="code5" placeholder="완제품 코드" onkeypress="HandleEnter Me, 'qty5'">
+    <input type="text" class="qty-input" id="qty5" placeholder="수량" onkeyup="FormatQtyField Me" onkeypress="HandleEnter Me, ''">
+  </div>
+
+  <div class="btns">
+    <button class="btn btn-ok" onclick="DoOK">실행</button>
+    <button class="btn btn-cancel" onclick="DoCancel">취소</button>
+  </div>
+</body>
+</html>
