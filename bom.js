@@ -13,9 +13,11 @@ function switchTab(tabName) {
 }
 
 // ============ BOM 파일 업로드 ============
+var bomFileName = '';
 document.getElementById('bomFile').addEventListener('change', function(e) {
   var file = e.target.files[0];
   if (!file) return;
+  bomFileName = file.name;
 
   document.getElementById('loadingOverlay').style.display = 'flex';
   document.querySelector('.loading-text').textContent = 'BOM 데이터 로딩 중...';
@@ -183,7 +185,7 @@ function parseBomTxt(text) {
     return;
   }
 
-  document.getElementById('bomStatus').textContent = bomData.length + '건 로드됨';
+  document.getElementById('bomStatus').textContent = bomFileName + ' (' + bomData.length + '건)';
   document.getElementById('bomStatus').classList.add('loaded');
   renderBomTree(bomData);
 }
@@ -238,7 +240,7 @@ function parseBomCsv(text) {
     return;
   }
 
-  document.getElementById('bomStatus').textContent = bomData.length + '건 로드됨';
+  document.getElementById('bomStatus').textContent = bomFileName + ' (' + bomData.length + '건)';
   document.getElementById('bomStatus').classList.add('loaded');
   renderBomTree(bomData);
 }

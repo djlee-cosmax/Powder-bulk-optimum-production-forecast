@@ -110,8 +110,8 @@ function processSapRow(r) {
   entry.records.push(record);
 }
 
-function sapUploadComplete() {
-  document.getElementById('sapStatus').textContent = sapCount.toLocaleString() + '건 로드됨';
+function sapUploadComplete(fileName) {
+  document.getElementById('sapStatus').textContent = fileName + ' (' + sapCount.toLocaleString() + '건)';
   document.getElementById('sapStatus').classList.add('loaded');
   document.getElementById('loadingOverlay').style.display = 'none';
   updateAutocompleteData();
@@ -139,7 +139,7 @@ function setupSapUpload() {
           var rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
           rows.forEach(function(r) { processSapRow(r); });
         });
-        sapUploadComplete();
+        sapUploadComplete(file.name);
       };
       reader.readAsArrayBuffer(file);
     } else {
@@ -149,7 +149,7 @@ function setupSapUpload() {
           encoding: 'UTF-8',
           skipEmptyLines: true,
           step: function(row) { processSapRow(row.data); },
-          complete: function() { sapUploadComplete(); }
+          complete: function() { sapUploadComplete(file.name); }
         });
       }, 50);
     }
@@ -212,7 +212,7 @@ function setupReturnUpload() {
           var rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
           rows.forEach(function(r) { processReturnRow(r, workTeamCode); });
         });
-        document.getElementById('returnStatus').textContent = returnCount.toLocaleString() + '건 로드됨';
+        document.getElementById('returnStatus').textContent = file.name + ' (' + returnCount.toLocaleString() + '건)';
         document.getElementById('returnStatus').classList.add('loaded');
         document.getElementById('loadingOverlay').style.display = 'none';
       };
@@ -226,7 +226,7 @@ function setupReturnUpload() {
           skipEmptyLines: true,
           step: function(row) { processReturnRow(row.data); },
           complete: function() {
-            document.getElementById('returnStatus').textContent = returnCount.toLocaleString() + '건 로드됨';
+            document.getElementById('returnStatus').textContent = file.name + ' (' + returnCount.toLocaleString() + '건)';
             document.getElementById('returnStatus').classList.add('loaded');
             document.getElementById('loadingOverlay').style.display = 'none';
           }
