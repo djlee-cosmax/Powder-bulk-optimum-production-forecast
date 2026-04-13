@@ -615,6 +615,50 @@ tbody tr:hover {
 }
 
 
+.bom-search-input {
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  width: 220px;
+  background: #fafafa;
+  transition: border-color 0.15s;
+}
+
+.bom-search-input:focus {
+  outline: none;
+  border-color: #4e79a7;
+  background: #fff;
+}
+
+.bom-table tbody tr.search-hidden {
+  display: none;
+}
+
+.bom-table tbody tr.search-highlight td {
+  background: #fff8e1;
+}
+
+.reset-upload-btn {
+  background: #fff;
+  color: #c8102e;
+  border: 1px solid #c8102e;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: all 0.2s;
+}
+
+.reset-upload-btn:hover {
+  background: #c8102e;
+  color: #fff;
+}
+
 /* 반응형 */
 @media (max-width: 1400px) {
   .result-cards {

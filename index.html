@@ -42,6 +42,7 @@
               <span class="file-status" id="returnStatus">미등록</span>
             </div>
           </div>
+          <button class="reset-upload-btn" id="resetUploadBtn" style="display:none" onclick="resetAllUploads()">전체 초기화</button>
         </div>
         <div class="section" id="bomOrderSection" style="flex:1;margin-bottom:0;display:none">
           <h2>완제품 발주 수량 입력</h2>
@@ -56,6 +57,7 @@
           <button class="bom-nav-btn" id="bomPrevBtn" onclick="bomNavPrev()">&lt;</button>
           <h2 id="bomTitle">BOM 구조</h2>
           <button class="bom-nav-btn" id="bomNextBtn" onclick="bomNavNext()">&gt;</button>
+          <input type="text" id="bomSearch" class="bom-search-input" placeholder="코드 또는 제품명 검색" oninput="filterBomTree()" autocomplete="off">
         </div>
         <div id="bomTree"></div>
       </div>

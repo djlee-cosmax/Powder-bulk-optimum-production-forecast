@@ -187,6 +187,7 @@ function parseBomTxt(text) {
 
   document.getElementById('bomStatus').textContent = bomFileName + ' (' + bomData.length + '건)';
   document.getElementById('bomStatus').classList.add('loaded');
+  if (typeof checkShowReset === 'function') checkShowReset();
   renderBomTree(bomData);
 }
 
@@ -242,6 +243,7 @@ function parseBomCsv(text) {
 
   document.getElementById('bomStatus').textContent = bomFileName + ' (' + bomData.length + '건)';
   document.getElementById('bomStatus').classList.add('loaded');
+  if (typeof checkShowReset === 'function') checkShowReset();
   renderBomTree(bomData);
 }
 
@@ -373,6 +375,29 @@ function bomNavNext() {
     bomCurrentPage++;
     renderBomPage();
   }
+}
+
+// ============ BOM 검색 필터 ============
+function filterBomTree() {
+  var keyword = document.getElementById('bomSearch').value.trim().toLowerCase();
+  var rows = document.querySelectorAll('#bomTree .bom-table tbody tr');
+  if (!keyword) {
+    rows.forEach(function(tr) {
+      tr.classList.remove('search-hidden');
+      tr.classList.remove('search-highlight');
+    });
+    return;
+  }
+  rows.forEach(function(tr) {
+    var text = tr.textContent.toLowerCase();
+    if (text.indexOf(keyword) >= 0) {
+      tr.classList.remove('search-hidden');
+      tr.classList.add('search-highlight');
+    } else {
+      tr.classList.add('search-hidden');
+      tr.classList.remove('search-highlight');
+    }
+  });
 }
 
 // ============ 발주수량 입력란 렌더링 ============

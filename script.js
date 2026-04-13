@@ -113,6 +113,7 @@ function processSapRow(r) {
 function sapUploadComplete(fileName) {
   document.getElementById('sapStatus').textContent = fileName + ' (' + sapCount.toLocaleString() + '건)';
   document.getElementById('sapStatus').classList.add('loaded');
+  checkShowReset();
   document.getElementById('loadingOverlay').style.display = 'none';
   updateAutocompleteData();
 }
@@ -215,6 +216,7 @@ function setupReturnUpload() {
         document.getElementById('returnStatus').textContent = file.name + ' (' + returnCount.toLocaleString() + '건)';
         document.getElementById('returnStatus').classList.add('loaded');
         document.getElementById('loadingOverlay').style.display = 'none';
+        checkShowReset();
       };
       reader.readAsArrayBuffer(file);
     } else {
@@ -229,6 +231,7 @@ function setupReturnUpload() {
             document.getElementById('returnStatus').textContent = file.name + ' (' + returnCount.toLocaleString() + '건)';
             document.getElementById('returnStatus').classList.add('loaded');
             document.getElementById('loadingOverlay').style.display = 'none';
+            checkShowReset();
           }
         });
       }, 50);
@@ -335,6 +338,38 @@ if (initialMoldInput) setupAutocomplete(initialMoldInput);
 // ============ 파일 업로드 초기화 ============
 setupSapUpload();
 setupReturnUpload();
+
+// 업로드 상태 추적
+var uploadCount = 0;
+function checkShowReset() {
+  uploadCount++;
+  document.getElementById('resetUploadBtn').style.display = 'inline-block';
+}
+
+// 전체 초기화
+function resetAllUploads() {
+  sapRecords = [];
+  moldBulkMap = {};
+  moldNameIndex = {};
+  sapCount = 0;
+  returnIndex = {};
+  returnCount = 0;
+  acItems = [];
+  uploadCount = 0;
+
+  document.getElementById('bomFile').value = '';
+  document.getElementById('sapFile').value = '';
+  document.getElementById('returnFile').value = '';
+  document.getElementById('bomStatus').textContent = '미등록';
+  document.getElementById('bomStatus').classList.remove('loaded');
+  document.getElementById('sapStatus').textContent = '미등록';
+  document.getElementById('sapStatus').classList.remove('loaded');
+  document.getElementById('returnStatus').textContent = '미등록';
+  document.getElementById('returnStatus').classList.remove('loaded');
+  document.getElementById('bomOrderSection').style.display = 'none';
+  document.getElementById('bomResultSection').style.display = 'none';
+  document.getElementById('resetUploadBtn').style.display = 'none';
+}
 
 // ============ 숫자 콤마 포맷 ============
 function formatQtyInput(e) {
