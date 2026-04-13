@@ -452,11 +452,8 @@ function predictOne(moldCode, orderQty) {
       }
     }
 
-    // 유효 이력 없으면 기본 10%
-    if (avgLossRate === null) avgLossRate = 10;
-
     // 최적 제조량 = 이론필요량 × (1 + 로스율/100)
-    var optimalQty = Math.ceil(theoryNeed * (1 + avgLossRate / 100));
+    var optimalQty = avgLossRate !== null ? Math.ceil(theoryNeed * (1 + avgLossRate / 100)) : null;
 
     return {
       moldCode: moldCode,
@@ -468,7 +465,7 @@ function predictOne(moldCode, orderQty) {
       theoryNeed: theoryNeed,
       avgLossRate: avgLossRate,
       optimalQty: optimalQty,
-      hasHistory: avgLossRate !== 10,
+      hasHistory: avgLossRate !== null,
       historyCount: records.length
     };
   });
@@ -532,15 +529,14 @@ if (predictBtn) predictBtn.addEventListener('click', function() {
           '<td>' + r.stdInputPerUnit.toFixed(2) + '</td>' +
           '<td>' + r.orderQty.toLocaleString() + '</td>' +
           '<td>' + Math.round(r.theoryNeed).toLocaleString() + '</td>' +
-          '<td>' + r.avgLossRate.toFixed(1) + '%' +
-            (r.hasHistory ? ' (' + r.historyCount + '건)' : ' (기본값)') + '</td>' +
+          '<td>' + (r.avgLossRate !== null ? r.avgLossRate.toFixed(1) + '% (' + r.historyCount + '건)' : '-') + '</td>' +
           '<td>' + (function() {
             var parts = [];
             if (r.returnActualCount > 0) parts.push('환입 ' + r.returnActualCount + '건');
             if (r.returnDisposalCount > 0) parts.push('폐기 ' + r.returnDisposalCount + '건');
             return parts.length > 0 ? parts.join(' / ') : '-';
           })() + '</td>' +
-          '<td class="optimal">' + r.optimalQty.toLocaleString() + '</td>' +
+          '<td class="optimal">' + (r.optimalQty !== null ? r.optimalQty.toLocaleString() : '-') + '</td>' +
         '</tr>';
       }
     }

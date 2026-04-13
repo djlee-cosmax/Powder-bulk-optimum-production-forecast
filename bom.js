@@ -341,7 +341,7 @@ function renderBomPage() {
       '<td>' + codeLabel + '</td>' +
       '<td class="bom-code">' + d.code + '</td>' +
       '<td class="bom-name" title="' + d.name + '">' + d.name + '</td>' +
-      '<td class="num">' + (d.inputQty ? (Math.round(d.inputQty * 1000) / 1000).toLocaleString() : '-') + '</td>' +
+      '<td class="num">' + (d.inputQty ? (Math.round(d.inputQty * 1000) / 1000) : '-') + '</td>' +
       '<td class="unit">' + d.unit + '</td>' +
       '<td' + stockClass + '>' + (d.stockTotal ? d.stockTotal.toLocaleString() : '-') + '</td>' +
       '<td' + availClass + '>' + (d.available ? d.available.toLocaleString() : '-') + '</td>' +
@@ -489,7 +489,7 @@ function calcBomNeeds() {
             avgLossRate = predicted[p].avgLossRate;
             historyCount = predicted[p].historyCount;
             // BOM 이론 필요량 기준으로 최적 제조량 재계산
-            optimalQty = Math.ceil(bulkTheoryNeed * (1 + avgLossRate / 100));
+            optimalQty = avgLossRate !== null ? Math.ceil(bulkTheoryNeed * (1 + avgLossRate / 100)) : null;
             break;
           }
         }
@@ -848,6 +848,12 @@ function renderBomCalcResults(results) {
         'XLSX.utils.book_append_sheet(wb, ws, "벌크별 필요 제조량");' +
         'XLSX.writeFile(wb, "벌크별_필요_제조량_" + new Date().toISOString().slice(0,10) + ".xlsx");' +
       '}' +
+      'document.addEventListener("keydown", function(e) {' +
+        'if (e.key === "Escape") {' +
+          'var modal = document.getElementById("modalOverlay");' +
+          'if (modal && modal.style.display !== "none") { modal.style.display = "none"; }' +
+        '}' +
+      '});' +
     '<\/script>' +
   '</body></html>';
 
