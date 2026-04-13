@@ -341,7 +341,7 @@ function renderBomPage() {
       '<td>' + codeLabel + '</td>' +
       '<td class="bom-code">' + d.code + '</td>' +
       '<td class="bom-name" title="' + d.name + '">' + d.name + '</td>' +
-      '<td class="num">' + (d.inputQty ? d.inputQty.toLocaleString() : '-') + '</td>' +
+      '<td class="num">' + (d.inputQty ? (Math.round(d.inputQty * 1000) / 1000).toLocaleString() : '-') + '</td>' +
       '<td class="unit">' + d.unit + '</td>' +
       '<td' + stockClass + '>' + (d.stockTotal ? d.stockTotal.toLocaleString() : '-') + '</td>' +
       '<td' + availClass + '>' + (d.available ? d.available.toLocaleString() : '-') + '</td>' +
@@ -486,9 +486,10 @@ function calcBomNeeds() {
         var predicted = predictOne(currentMold.code, Math.round(moldNeedQty));
         for (var p = 0; p < predicted.length; p++) {
           if (!predicted[p].error && predicted[p].bulkCode === d.code) {
-            optimalQty = predicted[p].optimalQty;
             avgLossRate = predicted[p].avgLossRate;
             historyCount = predicted[p].historyCount;
+            // BOM 이론 필요량 기준으로 최적 제조량 재계산
+            optimalQty = Math.ceil(bulkTheoryNeed * (1 + avgLossRate / 100));
             break;
           }
         }
@@ -704,12 +705,12 @@ function renderBomCalcResults(results) {
             '"<td class=\\"name\\">" + r.moldName + "</td>" +' +
             '"<td>" + r.bulkCode + "</td>" +' +
             '"<td class=\\"name\\">" + r.bulkName + "</td>" +' +
-            '"<td class=\\"num\\">" + r.bulkInputPerUnit + "</td>" +' +
+            '"<td class=\\"num\\">" + (Math.round(r.bulkInputPerUnit * 1000) / 1000) + "</td>" +' +
             '"<td class=\\"num\\">" + Math.round(r.moldNeedQty).toLocaleString() + "</td>" +' +
             '"<td class=\\"num highlight\\">" + Math.round(r.bulkTheoryNeed).toLocaleString() + "</td>" +' +
-            '"<td class=\\"num\\">" + (r.avgLossRate !== null ? r.avgLossRate.toFixed(1) + "%" : "-") + "</td>" +' +
+            '"<td class=\\"num\\">" + (r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-") + "</td>" +' +
             '"<td class=\\"num optimal\\">" + (r.optimalQty !== null ? Math.round(r.optimalQty).toLocaleString() : "-") + "</td>" +' +
-            '(showML ? "<td class=\\"num ml-col\\">" + (mlRate !== null ? mlRate.toFixed(1) + "%" : "-") + "</td>" +' +
+            '(showML ? "<td class=\\"num ml-col\\">" + (mlRate !== null ? mlRate.toFixed(2) + "%" : "-") + "</td>" +' +
             '"<td class=\\"num ml-col\\">" + (mlQty !== null ? mlQty.toLocaleString() : "-") + "</td>" : "") +' +
           '"</tr>";' +
         '}' +
@@ -784,7 +785,7 @@ function renderBomCalcResults(results) {
         '}' +
         'document.getElementById("modalTitle").textContent = r.bulkName + " 실적 이력";' +
         'document.getElementById("modalSub").textContent = "성형물: " + r.moldCode + " " + r.moldName + " / 벌크: " + r.bulkCode;' +
-        'document.getElementById("modalSummary").innerHTML = "총 <span>" + r.historyRecords.length + "건</span> | 로스율 <span>" + (r.avgLossRate !== null ? r.avgLossRate.toFixed(1) + "%" : "-") + "</span> <span style=\\"color:#c8102e;font-size:11px;margin-left:8px\\">* 최신 이력 1건 기준</span>";' +
+        'document.getElementById("modalSummary").innerHTML = "총 <span>" + r.historyRecords.length + "건</span> | 로스율 <span>" + (r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-") + "</span> <span style=\\"color:#c8102e;font-size:11px;margin-left:8px\\">* 최신 이력 1건 기준</span>";' +
         'var html = "<table><thead><tr><th>제조일</th><th>지시번호</th><th>지시수량(ea)</th><th>실적수량(ea)</th><th>표준소요량(g)</th><th>투입소요량(g)</th><th>환입/폐기</th><th>보정 후(g)</th><th>손실량(g)</th><th>설비</th></tr></thead><tbody>";' +
         'var sorted = r.historyRecords.slice().sort(function(a,b){ return (b.prodDate||"").localeCompare(a.prodDate||""); });' +
         'var latestFound = false;' +
@@ -839,7 +840,7 @@ function renderBomCalcResults(results) {
         'var rows = [headers];' +
         'for (var i = 0; i < group.items.length; i++) {' +
           'var r = group.items[i];' +
-          'rows.push([r.moldCode, r.moldName, r.bulkCode, r.bulkName, r.bulkInputPerUnit, Math.round(r.moldNeedQty), Math.round(r.bulkTheoryNeed), (r.avgLossRate !== null ? r.avgLossRate.toFixed(1) + "%" : "-"), (r.optimalQty !== null ? Math.round(r.optimalQty) : "-")]);' +
+          'rows.push([r.moldCode, r.moldName, r.bulkCode, r.bulkName, Math.round(r.bulkInputPerUnit * 1000) / 1000, Math.round(r.moldNeedQty), Math.round(r.bulkTheoryNeed), (r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-"), (r.optimalQty !== null ? Math.round(r.optimalQty) : "-")]);' +
         '}' +
         'var ws = XLSX.utils.aoa_to_sheet(rows);' +
         'ws["!cols"] = [{wch:14},{wch:25},{wch:14},{wch:25},{wch:10},{wch:12},{wch:14},{wch:10},{wch:14}];' +
