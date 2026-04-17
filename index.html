@@ -42,7 +42,10 @@
               <span class="file-status" id="returnStatus">미등록</span>
             </div>
           </div>
-          <button class="reset-upload-btn" id="resetUploadBtn" style="display:none" onclick="resetAllUploads()">전체 초기화</button>
+          <div style="display:flex;gap:8px">
+            <button class="reset-upload-btn" id="resetBomBtn" style="display:none" onclick="resetBomOnly()">BOM 초기화</button>
+            <button class="reset-upload-btn" id="resetUploadBtn" style="display:none" onclick="resetAllUploads()">전체 초기화</button>
+          </div>
         </div>
         <div class="section" id="bomOrderSection" style="flex:1;margin-bottom:0;display:none">
           <h2>완제품 발주 수량 입력</h2>

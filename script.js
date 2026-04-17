@@ -10,6 +10,131 @@ var sapCount = 0;
 var returnIndex = {};      // 생산오더 → [{ bulkCode, qty, type('환입'|'폐기'), date }]
 var returnCount = 0;
 
+// ============ IndexedDB ============
+var DB_NAME = 'cosmax_p2_db';
+var DB_VERSION = 1;
+var STORE_NAME = 'cache';
+
+function openDB() {
+  return new Promise(function(resolve, reject) {
+    var req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+    };
+    req.onsuccess = function(e) { resolve(e.target.result); };
+    req.onerror = function(e) { reject(e.target.error); };
+  });
+}
+
+function dbPut(key, value) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction([STORE_NAME], 'readwrite');
+      tx.objectStore(STORE_NAME).put(value, key);
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror = function(e) { reject(e.target.error); };
+    });
+  });
+}
+
+function dbGet(key) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction([STORE_NAME], 'readonly');
+      var req = tx.objectStore(STORE_NAME).get(key);
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror = function(e) { reject(e.target.error); };
+    });
+  });
+}
+
+function dbDelete(key) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction([STORE_NAME], 'readwrite');
+      tx.objectStore(STORE_NAME).delete(key);
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror = function(e) { reject(e.target.error); };
+    });
+  });
+}
+
+// SAP 데이터 IndexedDB 저장
+function saveSapToCache(fileName) {
+  return dbPut('sap', { records: sapRecords, fileName: fileName, savedAt: new Date().toISOString() })
+    .then(function() { console.log('SAP 데이터 IndexedDB 저장 완료 (' + sapCount + '건)'); })
+    .catch(function(e) { console.error('SAP 저장 실패:', e); });
+}
+
+// SAP 데이터 IndexedDB에서 복원
+function loadSapFromCache() {
+  return dbGet('sap').then(function(saved) {
+    if (!saved || !saved.records || !saved.records.length) return false;
+    sapRecords = [];
+    moldBulkMap = {};
+    moldNameIndex = {};
+    sapCount = 0;
+    for (var i = 0; i < saved.records.length; i++) {
+      var r = saved.records[i];
+      sapRecords.push(r);
+      sapCount++;
+      if (r.moldName && !moldNameIndex[r.moldCode]) moldNameIndex[r.moldCode] = r.moldName;
+      if (!moldBulkMap[r.moldCode]) moldBulkMap[r.moldCode] = {};
+      if (!moldBulkMap[r.moldCode][r.bulkCode]) {
+        moldBulkMap[r.moldCode][r.bulkCode] = {
+          bulkCode: r.bulkCode, bulkName: r.bulkName,
+          stdInputPerUnits: [], records: []
+        };
+      }
+      var entry = moldBulkMap[r.moldCode][r.bulkCode];
+      if (r.bulkName && !entry.bulkName) entry.bulkName = r.bulkName;
+      entry.stdInputPerUnits.push(r.stdInputPerUnit);
+      entry.records.push(r);
+    }
+    var savedDate = new Date(saved.savedAt).toLocaleDateString('ko-KR');
+    var statusEl = document.getElementById('sapStatus');
+    if (statusEl) {
+      statusEl.textContent = saved.fileName + ' (' + sapCount.toLocaleString() + '건, 저장: ' + savedDate + ')';
+      statusEl.classList.add('loaded');
+    }
+    updateAutocompleteData();
+    return true;
+  }).catch(function(e) { console.error('SAP 캐시 로드 실패:', e); return false; });
+}
+
+// 환입/폐기 데이터 캐시
+function saveReturnToCache(fileName) {
+  return dbPut('return', { index: returnIndex, fileName: fileName, savedAt: new Date().toISOString() })
+    .catch(function(e) { console.error('환입/폐기 저장 실패:', e); });
+}
+
+function loadReturnFromCache() {
+  return dbGet('return').then(function(saved) {
+    if (!saved || !saved.index) return false;
+    returnIndex = saved.index;
+    returnCount = 0;
+    var keys = Object.keys(returnIndex);
+    for (var k = 0; k < keys.length; k++) returnCount += returnIndex[keys[k]].length;
+    var savedDate = new Date(saved.savedAt).toLocaleDateString('ko-KR');
+    var statusEl = document.getElementById('returnStatus');
+    if (statusEl) {
+      statusEl.textContent = saved.fileName + ' (' + returnCount.toLocaleString() + '건, 저장: ' + savedDate + ')';
+      statusEl.classList.add('loaded');
+    }
+    return true;
+  }).catch(function(e) { console.error('환입/폐기 캐시 로드 실패:', e); return false; });
+}
+
+// 캐시 데이터 삭제
+function clearAllCache() {
+  if (!confirm('저장된 SAP 및 환입/폐기 데이터를 모두 삭제하시겠습니까?')) return;
+  Promise.all([dbDelete('sap'), dbDelete('return')]).then(function() {
+    alert('저장된 데이터를 삭제했습니다. 페이지를 새로고침합니다.');
+    location.reload();
+  });
+}
+
 // ============ 유틸 ============
 function parseNum(val) {
   if (typeof val === 'number') return val;
@@ -116,6 +241,7 @@ function sapUploadComplete(fileName) {
   checkShowReset();
   document.getElementById('loadingOverlay').style.display = 'none';
   updateAutocompleteData();
+  saveSapToCache(fileName);
 }
 
 function setupSapUpload() {
@@ -217,6 +343,7 @@ function setupReturnUpload() {
         document.getElementById('returnStatus').classList.add('loaded');
         document.getElementById('loadingOverlay').style.display = 'none';
         checkShowReset();
+        saveReturnToCache(file.name);
       };
       reader.readAsArrayBuffer(file);
     } else {
@@ -232,6 +359,7 @@ function setupReturnUpload() {
             document.getElementById('returnStatus').classList.add('loaded');
             document.getElementById('loadingOverlay').style.display = 'none';
             checkShowReset();
+            saveReturnToCache(file.name);
           }
         });
       }, 50);
@@ -339,6 +467,19 @@ if (initialMoldInput) setupAutocomplete(initialMoldInput);
 setupSapUpload();
 setupReturnUpload();
 
+// 페이지 로드 시 IndexedDB에서 자동 복원
+(function autoRestoreFromCache() {
+  Promise.all([loadSapFromCache(), loadReturnFromCache()]).then(function(results) {
+    var loaded = 0;
+    if (results[0]) loaded++;
+    if (results[1]) loaded++;
+    if (loaded > 0) {
+      checkShowReset();
+      console.log('[캐시 복원] ' + loaded + '개 데이터 자동 로드 완료');
+    }
+  });
+})();
+
 // 업로드 상태 추적
 var uploadCount = 0;
 function checkShowReset() {
@@ -346,8 +487,10 @@ function checkShowReset() {
   document.getElementById('resetUploadBtn').style.display = 'inline-block';
 }
 
-// 전체 초기화
+// 전체 초기화 (캐시 포함)
 function resetAllUploads() {
+  if (!confirm('업로드된 데이터(브라우저 저장 캐시 포함)를 모두 삭제하시겠습니까?')) return;
+  Promise.all([dbDelete('sap'), dbDelete('return')]).catch(function() {});
   sapRecords = [];
   moldBulkMap = {};
   moldNameIndex = {};
@@ -369,6 +512,22 @@ function resetAllUploads() {
   document.getElementById('bomOrderSection').style.display = 'none';
   document.getElementById('bomResultSection').style.display = 'none';
   document.getElementById('resetUploadBtn').style.display = 'none';
+  document.getElementById('resetBomBtn').style.display = 'none';
+}
+
+// BOM만 초기화 (SAP/환입폐기 데이터는 유지)
+function resetBomOnly() {
+  if (!confirm('BOM 데이터만 초기화하시겠습니까?\n(표준 대비 실적 / 벌크 폐기 데이터는 유지됩니다)')) return;
+  if (typeof parsedBomData !== 'undefined') parsedBomData = [];
+  if (typeof bomGroups !== 'undefined') bomGroups = [];
+  if (typeof bomCurrentPage !== 'undefined') bomCurrentPage = 0;
+  if (typeof prefilledOrderQtys !== 'undefined') prefilledOrderQtys = {};
+  document.getElementById('bomFile').value = '';
+  document.getElementById('bomStatus').textContent = '미등록';
+  document.getElementById('bomStatus').classList.remove('loaded');
+  document.getElementById('bomOrderSection').style.display = 'none';
+  document.getElementById('bomResultSection').style.display = 'none';
+  document.getElementById('resetBomBtn').style.display = 'none';
 }
 
 // ============ 숫자 콤마 포맷 ============
@@ -430,25 +589,31 @@ function predictOne(moldCode, orderQty) {
     var entry = bulkMap[bulkCode];
     var records = entry.records;
 
-    // 표준 투입용량: 전체 이력의 중앙값 사용 (이상치 제거)
-    var stdPerUnits = entry.stdInputPerUnits.filter(function(v) { return v > 0; });
-    stdPerUnits.sort(function(a, b) { return a - b; });
-    var medianStdPerUnit = stdPerUnits.length > 0
-      ? stdPerUnits[Math.floor(stdPerUnits.length / 2)]
-      : 0;
+    // 표준 투입용량: 가장 최신 유효 이력의 값 사용
+    // (SAP에서 BOM 표준이 변경될 수 있으므로 최신 데이터를 기준으로)
+    var sortedForStd = records.slice().sort(function(a, b) {
+      return (b.prodDate || '').localeCompare(a.prodDate || '');
+    });
+    var medianStdPerUnit = 0;
+    for (var s = 0; s < sortedForStd.length; s++) {
+      if (sortedForStd[s].stdInputPerUnit > 0) {
+        medianStdPerUnit = sortedForStd[s].stdInputPerUnit;
+        break;
+      }
+    }
 
     // 이론 필요량
     var theoryNeed = orderQty * medianStdPerUnit;
 
-    // 최신 이력 1건으로 로스율 계산 (날짜 내림차순 정렬 후 유효한 첫 건)
+    // 로스율 계산: 최근 유효 이력 최대 5건의 가중평균 (최신일수록 가중치 높음)
     // 날짜 기준 정렬 (최신순)
     var sortedRecords = records.slice().sort(function(a, b) {
       return (b.prodDate || '').localeCompare(a.prodDate || '');
     });
 
-    var avgLossRate = null;
+    var validLossRates = []; // 최근 유효 로스율 수집
 
-    for (var i = 0; i < sortedRecords.length; i++) {
+    for (var i = 0; i < sortedRecords.length && validLossRates.length < 5; i++) {
       var rec = sortedRecords[i];
       if (rec.stdNeed <= 3000) continue;
 
@@ -480,15 +645,76 @@ function predictOne(moldCode, orderQty) {
 
       var lossRate = ((actualInput - stdNeed) / stdNeed) * 100;
 
-      // 극단적 이상치가 아닌 유효한 건이면 채택
+      // 극단적 이상치가 아닌 유효한 건이면 수집
       if (lossRate >= -50 && lossRate <= 200) {
-        avgLossRate = lossRate;
-        break;
+        validLossRates.push(lossRate);
       }
+    }
+
+    // 가중평균 계산 (최신: weight=N, 다음: N-1, ..., 가장 오래된: 1)
+    var avgLossRate = null;
+    if (validLossRates.length > 0) {
+      var weightedSum = 0;
+      var totalWeight = 0;
+      for (var k = 0; k < validLossRates.length; k++) {
+        var weight = validLossRates.length - k; // 최신일수록 큰 가중치
+        weightedSum += validLossRates[k] * weight;
+        totalWeight += weight;
+      }
+      avgLossRate = weightedSum / totalWeight;
     }
 
     // 최적 제조량 = 이론필요량 × (1 + 로스율/100)
     var optimalQty = avgLossRate !== null ? Math.ceil(theoryNeed * (1 + avgLossRate / 100)) : null;
+
+    // 신뢰도 계산 (0~100점)
+    var confidenceScore = 0;
+    var stdDev = 0;
+    var recencyDays = null;
+    if (avgLossRate !== null) {
+      // 1. 표본 수 점수 (40점)
+      var sampleScore = 0;
+      if (validLossRates.length >= 5) sampleScore = 40;
+      else if (validLossRates.length >= 3) sampleScore = 25;
+      else sampleScore = 10;
+
+      // 2. 편차 점수 (40점) - 표준편차 계산
+      var meanRate = validLossRates.reduce(function(s, v) { return s + v; }, 0) / validLossRates.length;
+      var variance = validLossRates.reduce(function(s, v) { return s + (v - meanRate) * (v - meanRate); }, 0) / validLossRates.length;
+      stdDev = Math.sqrt(variance);
+      var devScore = 0;
+      if (stdDev < 3) devScore = 40;
+      else if (stdDev < 7) devScore = 25;
+      else if (stdDev < 15) devScore = 10;
+
+      // 3. 최신성 점수 (20점) - 가장 최신 사용 이력 기준
+      var recencyScore = 0;
+      for (var rs = 0; rs < sortedRecords.length; rs++) {
+        var rec_ = sortedRecords[rs];
+        if (rec_.stdNeed <= 3000) continue;
+        var ai_ = rec_.actualInput;
+        var lr_ = rec_.stdNeed > 0 ? ((ai_ - rec_.stdNeed) / rec_.stdNeed * 100) : 0;
+        if (lr_ >= -50 && lr_ <= 200 && rec_.prodDate) {
+          var d = new Date(rec_.prodDate);
+          if (!isNaN(d.getTime())) {
+            recencyDays = Math.floor((Date.now() - d.getTime()) / 86400000);
+            if (recencyDays <= 30) recencyScore = 20;
+            else if (recencyDays <= 90) recencyScore = 10;
+            else if (recencyDays <= 180) recencyScore = 5;
+          }
+          break;
+        }
+      }
+
+      confidenceScore = sampleScore + devScore + recencyScore;
+    }
+
+    // 신뢰도 등급
+    var confidenceLevel = 'none';
+    if (confidenceScore >= 80) confidenceLevel = 'high';
+    else if (confidenceScore >= 50) confidenceLevel = 'medium';
+    else if (confidenceScore >= 30) confidenceLevel = 'low';
+    else if (confidenceScore > 0) confidenceLevel = 'verylow';
 
     return {
       moldCode: moldCode,
@@ -501,7 +727,12 @@ function predictOne(moldCode, orderQty) {
       avgLossRate: avgLossRate,
       optimalQty: optimalQty,
       hasHistory: avgLossRate !== null,
-      historyCount: records.length
+      historyCount: records.length,
+      validHistoryCount: validLossRates.length,
+      confidenceScore: confidenceScore,
+      confidenceLevel: confidenceLevel,
+      stdDev: stdDev,
+      recencyDays: recencyDays
     };
   });
 }

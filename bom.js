@@ -89,11 +89,35 @@ function parseBomTxt(text) {
         if (colName === 'BUn' || colName.indexOf('단위') !== -1) colMap.unit = h;
         if (colName.indexOf('합계') !== -1 || colName.indexOf('재고합계') !== -1) colMap.stockTotal = h;
         if (colName.indexOf('가용') !== -1) colMap.available = h;
-        if (colName.indexOf('품질') !== -1) colMap.qualityInsp = h;
+        if (colName.indexOf('품질') !== -1 && colName.indexOf('검사') !== -1) colMap.qualityInsp = h;
         if (colName === '설명1' || colName === '설명 1') colMap.desc1 = h;
-        if (colName.indexOf('전체') !== -1 && colName.indexOf('이름') !== -1) colMap.fullName = h;
+        if (colName === '성명') colMap.fullName = h;
+        else if (colName.indexOf('긴') !== -1 && colName.indexOf('이름') !== -1) colMap.fullName = h;
+        else if (colName.indexOf('전체') !== -1 && colName.indexOf('이름') !== -1) colMap.fullName = h;
         if (colName.indexOf('로스율') !== -1 || colName.indexOf('로스') !== -1) colMap.lossRate = h;
         if (colName.indexOf('이름 1') !== -1 || colName.indexOf('공급업체') !== -1) colMap.supplier = h;
+        // 추가 헤더 자동 감지
+        if (colName === '구매담당자' || colName === '구매 담당자') colMap.purchaser = h;
+        if (colName === '영업담당자' || colName === '영업 담당자') colMap.salesPerson = h;
+        if (colName.indexOf('최종입고') !== -1 || colName.indexOf('최종 입고') !== -1) colMap.lastIn = h;
+        if (colName.indexOf('최종출고') !== -1 || colName.indexOf('최종 출고') !== -1) colMap.lastOut = h;
+        if (colName.indexOf('출고할당') !== -1 || colName.indexOf('출고 할당') !== -1) colMap.releaseAlloc = h;
+        if (colName.indexOf('사용불가') !== -1 || colName.indexOf('사용 불가') !== -1) colMap.unusable = h;
+        if (colName.indexOf('고객') !== -1 && colName.indexOf('이름') !== -1) colMap.customerName = h;
+      }
+      // 디버그: 감지된 컬럼 매핑 + 모든 헤더명 콘솔 출력
+      console.log('[BOM 헤더 매핑]', colMap);
+      console.log('[BOM 전체 헤더 목록]');
+      for (var hh = 0; hh < cols.length; hh++) {
+        if (cols[hh] && cols[hh].trim()) console.log('  [' + hh + '] ' + cols[hh].trim());
+      }
+      // 매핑된 컬럼 → 헤더명 확인
+      console.log('[매핑 결과]');
+      var mapKeys = Object.keys(colMap);
+      for (var mk = 0; mk < mapKeys.length; mk++) {
+        var key = mapKeys[mk];
+        var idx = colMap[key];
+        console.log('  ' + key + ' (' + idx + ') → "' + (cols[idx] ? cols[idx].trim() : '[fallback - 헤더 없음]') + '"');
       }
       if (colMap.lev !== undefined) {
         headerFound = true;
@@ -147,6 +171,8 @@ function parseBomTxt(text) {
 
     var lastIn = colMap.lastIn !== undefined && cols[colMap.lastIn] ? cols[colMap.lastIn].trim() : '';
     var lastOut = colMap.lastOut !== undefined && cols[colMap.lastOut] ? cols[colMap.lastOut].trim() : '';
+    var purchaser = colMap.purchaser !== undefined && cols[colMap.purchaser] ? cols[colMap.purchaser].trim() : '';
+    var salesPerson = colMap.salesPerson !== undefined && cols[colMap.salesPerson] ? cols[colMap.salesPerson].trim() : '';
 
     // 최종입고일, 최종출고일 둘 다 없으면 연구원에 PT 추가
     if (!lastIn && !lastOut) {
@@ -176,7 +202,9 @@ function parseBomTxt(text) {
       desc1: desc1,
       fullName: fullName,
       lossRate: lossRate,
-      supplier: supplier
+      supplier: supplier,
+      purchaser: purchaser,
+      salesPerson: salesPerson
     });
   }
 
@@ -187,6 +215,7 @@ function parseBomTxt(text) {
 
   document.getElementById('bomStatus').textContent = bomFileName + ' (' + bomData.length + '건)';
   document.getElementById('bomStatus').classList.add('loaded');
+  document.getElementById('resetBomBtn').style.display = 'inline-block';
   if (typeof checkShowReset === 'function') checkShowReset();
   renderBomTree(bomData);
 }
@@ -232,7 +261,9 @@ function parseBomCsv(text) {
         return fn;
       })(),
       lossRate: (r['로스율'] || '').trim(),
-      supplier: (r['이름 1'] || '').trim()
+      supplier: (r['이름 1'] || '').trim(),
+      purchaser: (r['구매담당자'] || r['구매 담당자'] || '').trim(),
+      salesPerson: (r['영업담당자'] || r['영업 담당자'] || '').trim()
     });
   }
 
@@ -243,6 +274,7 @@ function parseBomCsv(text) {
 
   document.getElementById('bomStatus').textContent = bomFileName + ' (' + bomData.length + '건)';
   document.getElementById('bomStatus').classList.add('loaded');
+  document.getElementById('resetBomBtn').style.display = 'inline-block';
   if (typeof checkShowReset === 'function') checkShowReset();
   renderBomTree(bomData);
 }
@@ -316,6 +348,8 @@ function renderBomPage() {
       '<th>최종출고일</th>' +
       '<th>타입</th>' +
       '<th>연구원</th>' +
+      '<th>구매담당자</th>' +
+      '<th>영업담당자</th>' +
     '</tr></thead><tbody>';
 
   for (var i = 0; i < pageData.length; i++) {
@@ -355,6 +389,8 @@ function renderBomPage() {
       '<td>' + (d.lastOut || '-') + '</td>' +
       '<td class="bom-name">' + (d.desc1 || '-') + '</td>' +
       '<td class="bom-name">' + (d.fullName || '-') + '</td>' +
+      '<td class="bom-name">' + (d.purchaser || '-') + '</td>' +
+      '<td class="bom-name">' + (d.salesPerson || '-') + '</td>' +
     '</tr>';
   }
 
@@ -507,12 +543,22 @@ function calcBomNeeds() {
       var avgLossRate = null;
       var historyCount = 0;
       var historyRecords = [];
+      var confidenceLevel = 'none';
+      var confidenceScore = 0;
+      var validHistoryCount = 0;
+      var stdDev = 0;
+      var recencyDays = null;
       if (typeof moldBulkMap !== 'undefined' && moldBulkMap[currentMold.code]) {
         var predicted = predictOne(currentMold.code, Math.round(moldNeedQty));
         for (var p = 0; p < predicted.length; p++) {
           if (!predicted[p].error && predicted[p].bulkCode === d.code) {
             avgLossRate = predicted[p].avgLossRate;
             historyCount = predicted[p].historyCount;
+            confidenceLevel = predicted[p].confidenceLevel;
+            confidenceScore = predicted[p].confidenceScore;
+            validHistoryCount = predicted[p].validHistoryCount;
+            stdDev = predicted[p].stdDev;
+            recencyDays = predicted[p].recencyDays;
             // BOM 이론 필요량 기준으로 최적 제조량 재계산
             optimalQty = avgLossRate !== null ? Math.ceil(bulkTheoryNeed * (1 + avgLossRate / 100)) : null;
             break;
@@ -576,6 +622,11 @@ function calcBomNeeds() {
         optimalQty: optimalQty,
         avgLossRate: avgLossRate,
         historyCount: historyCount,
+        validHistoryCount: validHistoryCount,
+        confidenceLevel: confidenceLevel,
+        confidenceScore: confidenceScore,
+        stdDev: stdDev,
+        recencyDays: recencyDays,
         historyRecords: historyRecords
       });
     }
@@ -659,15 +710,35 @@ function renderBomCalcResults(results) {
       '.toast { position:fixed; top:20px; right:20px; background:#333; color:#fff; padding:10px 20px; border-radius:6px; font-size:13px; display:none; z-index:999; }' +
       'tbody tr { cursor:pointer; }' +
       '.modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100; }' +
-      '.modal { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:10px; padding:24px; max-width:90%; max-height:80%; overflow-y:auto; box-shadow:0 8px 30px rgba(0,0,0,0.15); }' +
+      '.modal { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:10px; padding:24px; width:75%; height:75%; overflow-y:auto; box-shadow:0 8px 30px rgba(0,0,0,0.15); }' +
       '.modal h2 { font-size:16px; margin:0 0 4px; }' +
       '.modal .sub { font-size:12px; color:#999; margin-bottom:14px; }' +
       '.modal table { width:100%; }' +
       '.modal .close-btn { position:absolute; top:12px; right:16px; background:none; border:none; font-size:20px; cursor:pointer; color:#999; }' +
       '.modal .close-btn:hover { color:#333; }' +
-      '.modal .summary { display:flex; gap:20px; margin-bottom:14px; font-size:13px; }' +
+      '.modal .summary { display:flex; gap:20px; margin-bottom:14px; font-size:13px; align-items:center; }' +
       '.modal .summary span { font-weight:700; }' +
       '.note { font-size:13px; color:#666; padding:8px 0; }' +
+      '.help-icon { display:inline-block; width:16px; height:16px; line-height:14px; text-align:center; border:1px solid #c8102e; border-radius:50%; font-size:10px; color:#c8102e; cursor:help; font-weight:700; margin-left:4px; position:relative; }' +
+      '.help-icon:hover .help-tip { display:block; }' +
+      '.help-tip { display:none; position:absolute; top:24px; left:0; background:#1a1a1a; color:#fff; padding:14px 18px; border-radius:8px; font-size:12px; font-weight:400; white-space:pre; min-width:340px; text-align:left; line-height:1.7; box-shadow:0 4px 20px rgba(0,0,0,0.25); z-index:9999; }' +
+      '.help-tip::before { content:""; position:absolute; bottom:100%; left:6px; border:6px solid transparent; border-bottom-color:#1a1a1a; }' +
+      '.conf-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; }' +
+      '.conf-high { background:#d4edda; color:#155724; }' +
+      '.conf-medium { background:#fff3cd; color:#856404; }' +
+      '.conf-low { background:#ffe0b2; color:#bf360c; }' +
+      '.conf-verylow { background:#f8d7da; color:#721c24; }' +
+      '.conf-none { background:#f0f0f0; color:#999; }' +
+      '.sort-select { padding:7px 12px; border:1px solid #ddd; border-radius:6px; font-size:13px; background:#fff; cursor:pointer; font-family:inherit; }' +
+      '.sort-select:focus { outline:none; border-color:#4e79a7; }' +
+      'tr.row-low { background:#fff7ed; }' +
+      'tr.row-low:hover { background:#ffedd5; }' +
+      'tr.row-verylow { background:#fef2f2; }' +
+      'tr.row-verylow:hover { background:#fee2e2; }' +
+      'tr.row-none { background:#fafafa; color:#999; }' +
+      'tr.row-none:hover { background:#f0f0f0; }' +
+      'td.diff-warn { background:#fff3cd !important; color:#856404; font-weight:700; position:relative; }' +
+      'td.diff-alert { background:#f8d7da !important; color:#721c24; font-weight:700; position:relative; }' +
     '</style></head><body>' +
     '<div class="top-bar">' +
       '<div class="nav-area">' +
@@ -676,6 +747,14 @@ function renderBomCalcResults(results) {
         '<button class="nav-btn" id="nextBtn" onclick="navNext()">&gt;</button>' +
       '</div>' +
       '<div class="top-actions">' +
+        '<select class="sort-select" id="sortSelect" onchange="changeSort(this.value)">' +
+          '<option value="default">기본 순서</option>' +
+          '<option value="confLow">신뢰도 낮은 순</option>' +
+          '<option value="confHigh">신뢰도 높은 순</option>' +
+          '<option value="qtyDesc">최적 제조량 큰 순</option>' +
+          '<option value="qtyAsc">최적 제조량 작은 순</option>' +
+          '<option value="lossDesc">로스율 높은 순</option>' +
+        '</select>' +
         '<button class="btn btn-copy" onclick="copyOptimalQty()">최적 제조량 복사</button>' +
         '<button class="btn btn-ml-copy" onclick="copyMLQty()" id="mlCopyBtn" style="display:none">ML 제조량 복사</button>' +
         '<button class="btn btn-ml" onclick="toggleML()" id="mlBtn">ML 예측 비교</button>' +
@@ -696,6 +775,14 @@ function renderBomCalcResults(results) {
     '<div id="tableArea"></div>' +
     '<div class="actions">' +
       '<div class="note">' + sapNote + '</div>' +
+      '<div class="note ml-legend" id="mlLegend" style="display:none;margin-top:8px;padding:10px 14px;background:#fafbfc;border-radius:6px;border-left:3px solid #7c4dff">' +
+        '<div style="font-weight:700;margin-bottom:6px;color:#333">📊 ML vs 통계 예측 차이 색상 안내</div>' +
+        '<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:12px">' +
+          '<div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:16px;height:16px;background:#fff3cd;border:1px solid #856404;border-radius:3px"></span> 차이 5%p ~ 10%p (주의)</div>' +
+          '<div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:16px;height:16px;background:#f8d7da;border:1px solid #721c24;border-radius:3px"></span> 차이 10%p 이상 (경고)</div>' +
+          '<div style="color:#999">* 셀에 마우스를 올리면 정확한 차이 수치 표시</div>' +
+        '</div>' +
+      '</div>' +
     '</div>' +
     '<script>' +
       'var fertOrder = ' + JSON.stringify(fertOrder) + ';' +
@@ -703,6 +790,31 @@ function renderBomCalcResults(results) {
       'var allResults = ' + JSON.stringify(results) + ';' +
       'var currentPage = 0;' +
       'var showML = false;' +
+      'var currentSort = "default";' +
+      // 원본 순서 백업 (정렬 후 복원용)
+      'for (var fk in fertGroups) {' +
+        'fertGroups[fk]._originalItems = fertGroups[fk].items.slice();' +
+      '}' +
+      'function changeSort(sortKey) {' +
+        'currentSort = sortKey;' +
+        'renderPage();' +
+      '}' +
+      'function getSortedItems(items) {' +
+        'var sorted = items.slice();' +
+        'var levelRank = { high: 4, medium: 3, low: 2, verylow: 1, none: 0 };' +
+        'if (currentSort === "confLow") {' +
+          'sorted.sort(function(a, b) { return (levelRank[a.confidenceLevel] || 0) - (levelRank[b.confidenceLevel] || 0); });' +
+        '} else if (currentSort === "confHigh") {' +
+          'sorted.sort(function(a, b) { return (levelRank[b.confidenceLevel] || 0) - (levelRank[a.confidenceLevel] || 0); });' +
+        '} else if (currentSort === "qtyDesc") {' +
+          'sorted.sort(function(a, b) { return (b.optimalQty || 0) - (a.optimalQty || 0); });' +
+        '} else if (currentSort === "qtyAsc") {' +
+          'sorted.sort(function(a, b) { return (a.optimalQty || Infinity) - (b.optimalQty || Infinity); });' +
+        '} else if (currentSort === "lossDesc") {' +
+          'sorted.sort(function(a, b) { return (b.avgLossRate !== null ? b.avgLossRate : -Infinity) - (a.avgLossRate !== null ? a.avgLossRate : -Infinity); });' +
+        '}' +
+        'return sorted;' +
+      '}' +
       'var mlData = ' + (mlPredictions ? JSON.stringify(mlPredictions) : 'null') + ';' +
       'function getMLPrediction(bulkCode, stdNeed) {' +
         'if (!mlData || !mlData.bulkLookup || !mlData.bulkLookup[bulkCode]) return null;' +
@@ -717,6 +829,7 @@ function renderBomCalcResults(results) {
       'function renderPage() {' +
         'var code = fertOrder[currentPage];' +
         'var group = fertGroups[code];' +
+        'group.items = getSortedItems(group._originalItems);' +
         'document.getElementById("pageTitle").textContent = "벌크별 필요 제조량 (" + (currentPage+1) + "/" + fertOrder.length + ")";' +
         'document.getElementById("prevBtn").disabled = currentPage === 0;' +
         'document.getElementById("nextBtn").disabled = currentPage === fertOrder.length - 1;' +
@@ -725,7 +838,25 @@ function renderBomCalcResults(results) {
           'var r = group.items[i];' +
           'var mlRate = showML ? getMLPrediction(r.bulkCode, r.bulkTheoryNeed) : null;' +
           'var mlQty = (mlRate !== null) ? Math.ceil(r.bulkTheoryNeed * (1 + mlRate / 100)) : null;' +
-          'rows += "<tr ondblclick=\\"showHistory(" + i + ")\\">" +' +
+          // 신뢰도 배지
+          'var confLabel = "-";' +
+          'var confInfo = "";' +
+          'var confExtra = "";' +
+          'if (r.confidenceLevel !== "none") {' +
+            'confInfo = "[현재 측정값]\\n• 표본 수: " + r.validHistoryCount + "건\\n• 편차: " + r.stdDev.toFixed(1) + "%" + (r.recencyDays !== null ? "\\n• 최신성: " + r.recencyDays + "일 전" : "") + "\\n• 점수: " + r.confidenceScore + "/100";' +
+          '}' +
+          'var confCriteria = "\\n\\n[점수 기준 (총 100점)]\\n• 표본 수 (40점)\\n  - 5건 이상: 40점\\n  - 3~4건: 25점\\n  - 1~2건: 10점\\n• 편차 (40점)\\n  - 3% 미만: 40점\\n  - 7% 미만: 25점\\n  - 15% 미만: 10점\\n• 최신성 (20점)\\n  - 30일 이내: 20점\\n  - 90일 이내: 10점\\n  - 180일 이내: 5점\\n\\n[등급]\\n• 높음: 80점+\\n• 보통: 50~79점\\n• 낮음: 30~49점 (참고용)\\n• 매우 낮음: 30점 미만 (실측 필수)";' +
+          'if (r.confidenceLevel === "high") confLabel = "높음";' +
+          'else if (r.confidenceLevel === "medium") confLabel = "보통";' +
+          'else if (r.confidenceLevel === "low") { confLabel = "낮음"; confExtra = "\\n\\n참고용으로만 사용 권장"; }' +
+          'else if (r.confidenceLevel === "verylow") { confLabel = "매우 낮음"; confExtra = "\\n\\n실측 확인 필수"; }' +
+          'var confTipText = confInfo + confExtra + confCriteria;' +
+          'var confBadge = r.confidenceLevel === "none" ? "<span class=\\"conf-badge conf-none\\">-</span>" : "<span class=\\"conf-badge conf-" + r.confidenceLevel + "\\" title=\\"" + confTipText + "\\">" + confLabel + "</span>";' +
+          'var rowClass = "";' +
+          'if (r.confidenceLevel === "low") rowClass = "row-low";' +
+          'else if (r.confidenceLevel === "verylow") rowClass = "row-verylow";' +
+          'else if (r.confidenceLevel === "none") rowClass = "row-none";' +
+          'rows += "<tr class=\\"" + rowClass + "\\" ondblclick=\\"showHistory(" + i + ")\\">" +' +
             '"<td>" + r.moldCode + "</td>" +' +
             '"<td class=\\"name\\">" + r.moldName + "</td>" +' +
             '"<td>" + r.bulkCode + "</td>" +' +
@@ -733,15 +864,30 @@ function renderBomCalcResults(results) {
             '"<td class=\\"num\\">" + (Math.round(r.bulkInputPerUnit * 1000) / 1000) + "</td>" +' +
             '"<td class=\\"num\\">" + Math.round(r.moldNeedQty).toLocaleString() + "</td>" +' +
             '"<td class=\\"num highlight\\">" + Math.round(r.bulkTheoryNeed).toLocaleString() + "</td>" +' +
-            '"<td class=\\"num\\">" + (r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-") + "</td>" +' +
-            '"<td class=\\"num optimal\\">" + (r.optimalQty !== null ? Math.round(r.optimalQty).toLocaleString() : "-") + "</td>" +' +
-            '(showML ? "<td class=\\"num ml-col\\">" + (mlRate !== null ? mlRate.toFixed(2) + "%" : "-") + "</td>" +' +
-            '"<td class=\\"num ml-col\\">" + (mlQty !== null ? mlQty.toLocaleString() : "-") + "</td>" : "") +' +
+            // 차이 계산 (ML 모드 + 두 값 모두 있을 때)
+            '(function() {' +
+              'var diff = null; var diffClass = "";' +
+              'if (showML && mlRate !== null && r.avgLossRate !== null) {' +
+                'diff = Math.abs(mlRate - r.avgLossRate);' +
+                'if (diff >= 10) diffClass = "diff-alert";' +
+                'else if (diff >= 5) diffClass = "diff-warn";' +
+              '}' +
+              'var diffTip = diff !== null ? " title=\\"통계 vs ML 차이: " + diff.toFixed(2) + "%p\\"" : "";' +
+              'var html = "";' +
+              'html += "<td class=\\"num " + diffClass + "\\"" + diffTip + ">" + (r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-") + "</td>";' +
+              'html += "<td class=\\"num optimal\\">" + (r.optimalQty !== null ? Math.round(r.optimalQty).toLocaleString() : "-") + "</td>";' +
+              'html += "<td>" + confBadge + "</td>";' +
+              'if (showML) {' +
+                'html += "<td class=\\"num ml-col " + diffClass + "\\"" + diffTip + ">" + (mlRate !== null ? mlRate.toFixed(2) + "%" : "-") + "</td>";' +
+                'html += "<td class=\\"num ml-col\\">" + (mlQty !== null ? mlQty.toLocaleString() : "-") + "</td>";' +
+              '}' +
+              'return html;' +
+            '})() +' +
           '"</tr>";' +
         '}' +
         'var mlHeaders = showML ? "<th class=\\"ml-col\\">ML 로스율</th><th class=\\"ml-col\\">ML 제조량(g)</th>" : "";' +
         'document.getElementById("tableArea").innerHTML = "<table><thead><tr>" +' +
-          '"<th>성형물 코드</th><th>성형물명</th><th>벌크 코드</th><th>벌크명</th><th>투입량(g)</th><th>필요 수량(ea)</th><th>이론 필요량(g)</th><th>평균 로스율</th><th>최적 제조량(g)</th>" + mlHeaders +' +
+          '"<th>성형물 코드</th><th>성형물명</th><th>벌크 코드</th><th>벌크명</th><th>투입량(g)</th><th>필요 수량(ea)</th><th>이론 필요량(g)</th><th>평균 로스율</th><th>최적 제조량(g)</th><th>신뢰도</th>" + mlHeaders +' +
           '"</tr></thead><tbody>" + rows + "</tbody></table>";' +
       '}' +
       'function toggleML() {' +
@@ -754,6 +900,7 @@ function renderBomCalcResults(results) {
         'btn.textContent = showML ? "ML 숨기기" : "ML 예측 비교";' +
         'btn.classList.toggle("active", showML);' +
         'document.getElementById("mlCopyBtn").style.display = showML ? "inline-block" : "none";' +
+        'document.getElementById("mlLegend").style.display = showML ? "block" : "none";' +
         'renderPage();' +
       '}' +
       'function navPrev() { if (currentPage > 0) { currentPage--; renderPage(); } }' +
@@ -810,10 +957,44 @@ function renderBomCalcResults(results) {
         '}' +
         'document.getElementById("modalTitle").textContent = r.bulkName + " 실적 이력";' +
         'document.getElementById("modalSub").textContent = "성형물: " + r.moldCode + " " + r.moldName + " / 벌크: " + r.bulkCode;' +
-        'document.getElementById("modalSummary").innerHTML = "총 <span>" + r.historyRecords.length + "건</span> | 로스율 <span>" + (r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-") + "</span> <span style=\\"color:#c8102e;font-size:11px;margin-left:8px\\">* 최신 이력 1건 기준</span>";' +
-        'var html = "<table><thead><tr><th>제조일</th><th>지시번호</th><th>지시수량(ea)</th><th>실적수량(ea)</th><th>표준소요량(g)</th><th>투입소요량(g)</th><th>환입/폐기</th><th>보정 후(g)</th><th>손실량(g)</th><th>설비</th></tr></thead><tbody>";' +
+        // 가중평균 계산 과정 텍스트 생성
+        'var calcText = "";' +
+        'if (r.avgLossRate !== null && r.historyRecords) {' +
+          'var sortedR = r.historyRecords.slice().sort(function(a,b){ return (b.prodDate||"").localeCompare(a.prodDate||""); });' +
+          'var validList = [];' +
+          'for (var c = 0; c < sortedR.length && validList.length < 5; c++) {' +
+            'var rcc = sortedR[c];' +
+            'if (rcc.stdNeed <= 3000) continue;' +
+            'var uinn = rcc.adjustedInput || rcc.actualInput;' +
+            'var lrr = rcc.stdNeed > 0 ? ((uinn - rcc.stdNeed) / rcc.stdNeed * 100) : 0;' +
+            'if (lrr >= -50 && lrr <= 200) { validList.push({ date: rcc.prodDate, rate: lrr }); }' +
+          '}' +
+          'var lines = ["[가중평균 계산 과정]", ""];' +
+          'var ws = 0; var tw = 0;' +
+          'for (var c = 0; c < validList.length; c++) {' +
+            'var w = validList.length - c;' +
+            'lines.push((c+1) + ". " + (validList[c].date || "-") + "  " + validList[c].rate.toFixed(2) + "%  ×  가중치 " + w + "  =  " + (validList[c].rate * w).toFixed(2));' +
+            'ws += validList[c].rate * w;' +
+            'tw += w;' +
+          '}' +
+          'lines.push("");' +
+          'lines.push("합계 " + ws.toFixed(2) + " ÷ 가중치합 " + tw + " = " + (ws/tw).toFixed(2) + "%");' +
+          'calcText = lines.join("\\n");' +
+        '}' +
+        'var helpIcon = calcText ? "<span class=\\"help-icon\\">?<span class=\\"help-tip\\">" + calcText.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</span></span>" : "";' +
+        'document.getElementById("modalSummary").innerHTML = "총 <span>" + r.historyRecords.length + "건</span> | 로스율 <span>" + (r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-") + "</span> <span style=\\"color:#c8102e;font-size:11px;margin-left:8px\\">* 최근 유효 5건 가중평균 (최신=가중치 5, 가장 오래=가중치 1)</span>" + helpIcon;' +
+        'var html = "<table><thead><tr><th>제조일</th><th>지시번호</th><th>지시수량(ea)</th><th>실적수량(ea)</th><th>표준소요량(g)</th><th>투입소요량(g)</th><th>환입/폐기</th><th>보정 후(g)</th><th>손실량(g)</th><th>가중치</th><th>설비</th></tr></thead><tbody>";' +
         'var sorted = r.historyRecords.slice().sort(function(a,b){ return (b.prodDate||"").localeCompare(a.prodDate||""); });' +
-        'var latestFound = false;' +
+        // 1차 패스: 유효한 이력 건수 카운트 (최대 5)
+        'var totalValid = 0;' +
+        'for (var hh = 0; hh < sorted.length && totalValid < 5; hh++) {' +
+          'var rrec = sorted[hh];' +
+          'if (rrec.stdNeed <= 3000) continue;' +
+          'var uin = rrec.adjustedInput || rrec.actualInput;' +
+          'var lr = rrec.stdNeed > 0 ? ((uin - rrec.stdNeed) / rrec.stdNeed * 100) : 0;' +
+          'if (lr >= -50 && lr <= 200) totalValid++;' +
+        '}' +
+        'var validCount = 0;' +
         'for (var h = 0; h < sorted.length; h++) {' +
           'var rec = sorted[h];' +
           'if (rec.stdNeed <= 3000) continue;' +
@@ -835,20 +1016,35 @@ function renderBomCalcResults(results) {
           'var lossColor = lossRate > 5 ? "color:#c8102e;font-weight:700" : "";' +
           'var adjustedDiff = (rec.adjustedInput && rec.adjustedInput !== rec.actualInput);' +
           'var adjustedStyle = adjustedDiff ? "color:#4e79a7;font-weight:600" : "";' +
-          'var isLatest = false;' +
-          'if (!latestFound && lossRate >= -50 && lossRate <= 200) { isLatest = true; latestFound = true; }' +
-          'var rowStyle = isLatest ? "outline:2.5px solid #c8102e;outline-offset:-1px;background:#fff5f5;" : "";' +
-          'html += "<tr style=\\"" + rowStyle + "\\">" +' +
-            '"<td>" + (rec.prodDate || "-") + "</td>" +' +
-            '"<td>" + (rec.prodOrder || "-") + "</td>" +' +
-            '"<td class=\\"num\\">" + (rec.orderQty ? Math.round(rec.orderQty).toLocaleString() : "-") + "</td>" +' +
-            '"<td class=\\"num\\">" + (rec.actualQty ? Math.round(rec.actualQty).toLocaleString() : "-") + "</td>" +' +
-            '"<td class=\\"num\\">" + (rec.stdNeed ? Math.round(rec.stdNeed).toLocaleString() : "-") + "</td>" +' +
-            '"<td class=\\"num\\">" + (rec.actualInput ? Math.round(rec.actualInput).toLocaleString() : "-") + "</td>" +' +
-            '"<td class=\\"num\\" style=\\"" + returnColor + "\\">" + returnText + "</td>" +' +
-            '"<td class=\\"num\\" style=\\"" + adjustedStyle + "\\">" + Math.round(useInput).toLocaleString() + "</td>" +' +
-            '"<td class=\\"num\\" style=\\"" + lossColor + "\\">" + Math.round(lossQty).toLocaleString() + " (" + lossRate.toFixed(1) + "%)</td>" +' +
-            '"<td>" + (rec.machine || "-") + "</td>" +' +
+          'var isUsed = false; var weightLabel = "-";' +
+          'var isFirstUsed = false; var isLastUsed = false;' +
+          'if (validCount < totalValid && lossRate >= -50 && lossRate <= 200) {' +
+            'isUsed = true; validCount++; weightLabel = String(totalValid - validCount + 1);' +
+            'if (validCount === 1) isFirstUsed = true;' +
+            'if (validCount === totalValid) isLastUsed = true;' +
+          '}' +
+          // 그룹 외곽 테두리 스타일 (각 셀 단위로 적용)
+          'var bg = isUsed ? "background:#fff5f5;" : "";' +
+          'var bTop = isFirstUsed ? "border-top:2.5px solid #c8102e;" : "";' +
+          'var bBot = isLastUsed ? "border-bottom:2.5px solid #c8102e;" : "";' +
+          'var bLeft = isUsed ? "border-left:2.5px solid #c8102e;" : "";' +
+          'var bRight = isUsed ? "border-right:2.5px solid #c8102e;" : "";' +
+          'var firstCellStyle = bg + bTop + bBot + bLeft;' +
+          'var lastCellStyle = bg + bTop + bBot + bRight;' +
+          'var midCellStyle = bg + bTop + bBot;' +
+          'var weightStyle = midCellStyle + (isUsed ? "color:#c8102e;font-weight:700" : "color:#bbb");' +
+          'html += "<tr>" +' +
+            '"<td style=\\"" + firstCellStyle + "\\">" + (rec.prodDate || "-") + "</td>" +' +
+            '"<td style=\\"" + midCellStyle + "\\">" + (rec.prodOrder || "-") + "</td>" +' +
+            '"<td class=\\"num\\" style=\\"" + midCellStyle + "\\">" + (rec.orderQty ? Math.round(rec.orderQty).toLocaleString() : "-") + "</td>" +' +
+            '"<td class=\\"num\\" style=\\"" + midCellStyle + "\\">" + (rec.actualQty ? Math.round(rec.actualQty).toLocaleString() : "-") + "</td>" +' +
+            '"<td class=\\"num\\" style=\\"" + midCellStyle + "\\">" + (rec.stdNeed ? Math.round(rec.stdNeed).toLocaleString() : "-") + "</td>" +' +
+            '"<td class=\\"num\\" style=\\"" + midCellStyle + "\\">" + (rec.actualInput ? Math.round(rec.actualInput).toLocaleString() : "-") + "</td>" +' +
+            '"<td class=\\"num\\" style=\\"" + midCellStyle + returnColor + "\\">" + returnText + "</td>" +' +
+            '"<td class=\\"num\\" style=\\"" + midCellStyle + adjustedStyle + "\\">" + Math.round(useInput).toLocaleString() + "</td>" +' +
+            '"<td class=\\"num\\" style=\\"" + midCellStyle + lossColor + "\\">" + Math.round(lossQty).toLocaleString() + " (" + lossRate.toFixed(1) + "%)</td>" +' +
+            '"<td style=\\"" + weightStyle + "\\">" + weightLabel + "</td>" +' +
+            '"<td style=\\"" + lastCellStyle + "\\">" + (rec.machine || "-") + "</td>" +' +
           '"</tr>";' +
         '}' +
         'html += "</tbody></table>";' +
@@ -861,14 +1057,27 @@ function renderBomCalcResults(results) {
       'function downloadExcel() {' +
         'var code = fertOrder[currentPage];' +
         'var group = fertGroups[code];' +
-        'var headers = ["성형물 코드","성형물명","벌크 코드","벌크명","투입량(g)","필요 수량(ea)","이론 필요량(g)","평균 로스율","최적 제조량(g)"];' +
+        'var headers = ["성형물 코드","성형물명","벌크 코드","벌크명","투입량(g)","필요 수량(ea)","이론 필요량(g)","평균 로스율","최적 제조량(g)","신뢰도","신뢰도 점수","유효 표본수","편차(%)","최신 이력(일전)"];' +
         'var rows = [headers];' +
+        'var confLabelMap = { high: "높음", medium: "보통", low: "낮음", verylow: "매우 낮음", none: "-" };' +
         'for (var i = 0; i < group.items.length; i++) {' +
           'var r = group.items[i];' +
-          'rows.push([r.moldCode, r.moldName, r.bulkCode, r.bulkName, Math.round(r.bulkInputPerUnit * 1000) / 1000, Math.round(r.moldNeedQty), Math.round(r.bulkTheoryNeed), (r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-"), (r.optimalQty !== null ? Math.round(r.optimalQty) : "-")]);' +
+          'var confLabel = confLabelMap[r.confidenceLevel] || "-";' +
+          'rows.push([' +
+            'r.moldCode, r.moldName, r.bulkCode, r.bulkName,' +
+            'Math.round(r.bulkInputPerUnit * 1000) / 1000,' +
+            'Math.round(r.moldNeedQty), Math.round(r.bulkTheoryNeed),' +
+            '(r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-"),' +
+            '(r.optimalQty !== null ? Math.round(r.optimalQty) : "-"),' +
+            'confLabel,' +
+            '(r.confidenceLevel !== "none" ? r.confidenceScore : "-"),' +
+            '(r.confidenceLevel !== "none" ? r.validHistoryCount : "-"),' +
+            '(r.confidenceLevel !== "none" ? r.stdDev.toFixed(2) : "-"),' +
+            '(r.recencyDays !== null ? r.recencyDays : "-")' +
+          ']);' +
         '}' +
         'var ws = XLSX.utils.aoa_to_sheet(rows);' +
-        'ws["!cols"] = [{wch:14},{wch:25},{wch:14},{wch:25},{wch:10},{wch:12},{wch:14},{wch:10},{wch:14}];' +
+        'ws["!cols"] = [{wch:14},{wch:25},{wch:14},{wch:25},{wch:10},{wch:12},{wch:14},{wch:10},{wch:14},{wch:10},{wch:12},{wch:10},{wch:10},{wch:14}];' +
         'var wb = XLSX.utils.book_new();' +
         'XLSX.utils.book_append_sheet(wb, ws, "벌크별 필요 제조량");' +
         'XLSX.writeFile(wb, "벌크별_필요_제조량_" + new Date().toISOString().slice(0,10) + ".xlsx");' +
