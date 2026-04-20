@@ -211,7 +211,7 @@
     <div class="cover-line"></div>
     <div class="cover-dept">COSMAX 생산3팀 & 생산운영팀</div>
     <div class="cover-info">
-      <div>버전 1.0</div>
+      <div>버전 2.0</div>
       <div>2026년 4월</div>
     </div>
   </div>
@@ -238,9 +238,11 @@
     <ul>
       <li><strong>BOM 구조 분석</strong> — 완제품 → 성형물 → 벌크 구조를 트리 형태로 시각화</li>
       <li><strong>벌크별 필요 제조량 계산</strong> — 발주 수량 입력 시 벌크별 최적 제조량 자동 산출</li>
-      <li><strong>로스율 기반 예측</strong> — SAP 실적 데이터의 최신 이력을 기반으로 로스율 반영</li>
+      <li><strong>로스율 기반 예측</strong> — SAP 실적 데이터 <strong>최근 5건의 가중평균</strong>으로 로스율 산출 (이상치 영향 감소)</li>
+      <li><strong>신뢰도 점수 표시</strong> — 표본수·편차·최신성 기반 0~100점 평가 및 등급 배지 (높음/보통/낮음/매우 낮음)</li>
       <li><strong>ML(머신러닝) 예측 비교</strong> — 제조량 구간별 학습된 로스율과 비교 가능</li>
       <li><strong>폐기 데이터 보정</strong> — 폐기된 벌크량을 차감하여 실제 사용량 기준으로 계산</li>
+      <li><strong>데이터 자동 저장</strong> — IndexedDB에 SAP·환입/폐기 데이터 저장, 페이지 재접속 시 자동 복원</li>
       <li><strong>결과 내보내기</strong> — 엑셀(XLSX) 또는 CSV 파일로 다운로드 가능</li>
     </ul>
   </div>
@@ -333,13 +335,60 @@
     <div class="formula">로스율(%) = (실제 투입량 - 표준소요량) ÷ 표준소요량 × 100</div>
 
     <ul>
-      <li>과거 이력을 <strong>최신순으로 정렬</strong>하여 유효한 최신 1건의 로스율을 채택합니다.</li>
+      <li>과거 이력을 <strong>최신순으로 정렬</strong>한 후, 유효한 <strong>최근 5건</strong>의 로스율을 <strong>가중평균</strong>하여 채택합니다.<br>(최신 이력일수록 큰 가중치를 부여 — 예: 5건일 때 최신=5, 다음=4, ..., 가장 오래된=1)</li>
       <li>표준소요량 3,000g 이하의 소량 건은 제외합니다. (소량 제조 시 로스율이 비정상적으로 높아지는 패턴이 있고, 현장에서 3kg 이하 잔량은 환입 없이 폐기하므로 폐기분이 투입량에 포함되어 로스율이 왜곡될 수 있기 때문)</li>
+      <li>표준 투입량은 과거 이력 중 <strong>가장 최신의 유효값</strong>을 사용합니다. (SAP BOM이 변경된 경우 최신 변경값을 즉시 반영)</li>
       <li>폐기 데이터가 있으면 실제 투입량에서 폐기량을 차감하여 보정합니다.</li>
       <li>유효한 이력이 없는 경우 로스율과 최적 제조량은 <strong>"-"</strong>으로 표시됩니다.</li>
     </ul>
 
-    <h3>4-3. 최적 제조량 산출</h3>
+    <div class="info-box">
+      <div class="label">최근 5건 가중평균을 사용하는 이유</div>
+      <div>단일 최근 이력만 사용하면 해당 1건이 이상값인 경우(특수 조건, 측정 오차 등) 예측이 크게 왜곡될 수 있습니다.<br>최근 5건의 가중평균을 사용하면 최신 현장 상황을 반영하면서도 이상치 1건의 영향을 줄일 수 있습니다.</div>
+    </div>
+
+    <h3>4-3. 신뢰도 점수</h3>
+    <p>각 벌크의 로스율 예측에 대해 <strong>0~100점</strong>의 신뢰도 점수를 함께 산출하여, 예측값을 얼마나 믿을 수 있는지 직관적으로 확인할 수 있게 합니다.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:25%">항목 (만점)</th>
+          <th style="width:35%">기준</th>
+          <th>점수</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td rowspan="3"><strong>표본 수 (40점)</strong></td><td>5건 이상</td><td>40점</td></tr>
+        <tr><td>3~4건</td><td>25점</td></tr>
+        <tr><td>1~2건</td><td>10점</td></tr>
+        <tr><td rowspan="3"><strong>편차 (40점)</strong></td><td>표준편차 3% 미만</td><td>40점</td></tr>
+        <tr><td>표준편차 7% 미만</td><td>25점</td></tr>
+        <tr><td>표준편차 15% 미만</td><td>10점</td></tr>
+        <tr><td rowspan="3"><strong>최신성 (20점)</strong></td><td>최신 이력 30일 이내</td><td>20점</td></tr>
+        <tr><td>최신 이력 90일 이내</td><td>10점</td></tr>
+        <tr><td>최신 이력 180일 이내</td><td>5점</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin:14px 0 6px;padding-left:10px;border-left:3px solid #c8102e;font-size:10pt;font-weight:700;">신뢰도 등급</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>등급</th>
+          <th>점수 범위</th>
+          <th>의미</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>높음</strong></td><td>80점 이상</td><td class="left">그대로 활용 가능</td></tr>
+        <tr><td><strong>보통</strong></td><td>50~79점</td><td class="left">활용 가능하나 주의</td></tr>
+        <tr><td><strong>낮음</strong></td><td>30~49점</td><td class="left">참고용 — 실측으로 교차 확인 권장</td></tr>
+        <tr><td><strong>매우 낮음</strong></td><td>30점 미만</td><td class="left">실측 필수 — 예측값만으로 판단 금지</td></tr>
+      </tbody>
+    </table>
+
+    <h3>4-4. 최적 제조량 산출</h3>
     <p>이론 필요량에 로스율을 반영하여 최적 제조량을 산출합니다.</p>
     <div class="formula">최적 제조량(g) = 이론 필요량 × (1 + 로스율 ÷ 100)</div>
     <p>예시: 57,000g × (1 + 10.59% ÷ 100) = 57,000 × 1.1059 = <strong>63,036g</strong></p>
@@ -356,11 +405,12 @@
     <p>결과 화면에서 <strong>"ML 예측 비교"</strong> 버튼을 클릭하면 머신러닝 기반의 로스율 및 제조량을 함께 확인할 수 있습니다.</p>
 
     <h3>5-1. ML 예측 방식</h3>
-    <p>과거 전체 SAP 실적 데이터 <strong>30,068건</strong>을 LightGBM 머신러닝 알고리즘으로 학습하여, 벌크코드별 + 제조량 구간별 예측 로스율을 산출한 결과입니다.</p>
+    <p>과거 전체 SAP 실적 데이터 중 이상치를 제거한 <strong>42,408건</strong>을 <strong>Gradient Boosting</strong> 머신러닝 알고리즘으로 학습하여, 벌크코드별 + 제조량 구간별 예측 로스율을 산출합니다.</p>
+    <p>2026년 4월 기준 학습 결과: <strong>벌크 6,131종, 테스트 MAE(평균 절대 오차) 11.91%</strong></p>
 
     <div class="info-box">
-      <div class="label">LightGBM이란?</div>
-      <div>LightGBM(Light Gradient Boosting Machine)은 Microsoft에서 개발한 고성능 머신러닝 알고리즘입니다.<br>여러 개의 간단한 예측 모델(결정 트리)을 순차적으로 쌓아가면서, 이전 모델이 틀린 부분을 다음 모델이 보완하는 방식으로 학습합니다.<br>대용량 데이터를 빠르게 처리하면서도 높은 예측 정확도를 보여주어, 산업 현장의 수요 예측과 품질 분석에 널리 사용되고 있습니다.</div>
+      <div class="label">Gradient Boosting이란?</div>
+      <div>Gradient Boosting은 여러 개의 간단한 예측 모델(결정 트리)을 순차적으로 쌓아가면서, 이전 모델이 틀린 부분을 다음 모델이 보완하는 방식으로 학습하는 고성능 머신러닝 알고리즘입니다.<br>대용량 데이터를 빠르게 처리하면서도 높은 예측 정확도를 보여주어, 산업 현장의 수요 예측과 품질 분석에 널리 사용되고 있습니다.</div>
     </div>
 
     <h3>5-2. ML이 학습에 사용하는 변수</h3>
@@ -369,21 +419,18 @@
     <table>
       <thead>
         <tr>
-          <th style="width:30%">학습 변수</th>
+          <th style="width:35%">학습 변수</th>
           <th>설명</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td><strong>표준소요량</strong></td><td class="left">BOM 기준 벌크 표준 필요량 (제조 규모)</td></tr>
-        <tr><td><strong>실적수량</strong></td><td class="left">실제 생산된 성형물 수량</td></tr>
-        <tr><td><strong>오더수량</strong></td><td class="left">생산 지시 수량</td></tr>
-        <tr><td><strong>공장</strong></td><td class="left">화성 / 평택 (공장별 로스 패턴 차이 반영)</td></tr>
-        <tr><td><strong>관리유형코드</strong></td><td class="left">제품의 관리 유형 분류</td></tr>
-        <tr><td><strong>설비코드</strong></td><td class="left">사용 설비 (설비별 로스 차이 반영)</td></tr>
-        <tr><td><strong>벌크그룹코드</strong></td><td class="left">벌크의 그룹 분류</td></tr>
-        <tr><td><strong>표준투입용량</strong></td><td class="left">성형물 1개당 벌크 투입량</td></tr>
-        <tr><td><strong>월</strong></td><td class="left">제조 월 (계절별 환경 차이 반영)</td></tr>
-        <tr><td><strong>벌크평균로스율</strong></td><td class="left">해당 벌크의 과거 평균 로스율</td></tr>
+        <tr><td><strong>실적수량</strong></td><td class="left">실제 생산된 성형물 수량 (제조 규모)</td></tr>
+        <tr><td><strong>관리유형</strong></td><td class="left">제품의 관리 유형 분류 (관리유형별 로스 패턴 차이 반영)</td></tr>
+        <tr><td><strong>작업장</strong></td><td class="left">공장·설비가 결합된 작업장 정보 (예: 화성 자동 파우더 성형기2)</td></tr>
+        <tr><td><strong>벌크 평균 로스율</strong></td><td class="left">해당 벌크의 과거 평균 로스율</td></tr>
+        <tr><td><strong>벌크 로스율 표준편차</strong></td><td class="left">해당 벌크의 로스율 변동성 (편차가 클수록 예측이 어려움)</td></tr>
+        <tr><td><strong>벌크 로스율 중간값</strong></td><td class="left">해당 벌크의 로스율 중간값 (이상치에 덜 민감한 대표값)</td></tr>
+        <tr><td><strong>평균 단위당 표준소요량</strong></td><td class="left">성형물 1개당 벌크 투입량 평균 (제품 특성 반영)</td></tr>
       </tbody>
     </table>
 
@@ -436,7 +483,7 @@
       <tbody>
         <tr>
           <td><strong>로스율 기준</strong></td>
-          <td class="left">최신 이력 1건</td>
+          <td class="left">최근 5건의 가중평균 로스율</td>
           <td class="left">전체 이력 + 다양한 조건 학습 결과</td>
         </tr>
         <tr>
@@ -446,8 +493,8 @@
         </tr>
         <tr>
           <td><strong>장점</strong></td>
-          <td class="left">최근 현장 상황이 즉시 반영됨</td>
-          <td class="left">제조량/공장/설비 등 다양한 조건 반영</td>
+          <td class="left">최근 현장 상황이 즉시 반영됨<br>(이상치 1건의 영향 감소)</td>
+          <td class="left">제조량/작업장/관리유형 등 다양한 조건 반영</td>
         </tr>
         <tr>
           <td><strong>이력 없을 때</strong></td>
@@ -456,8 +503,8 @@
         </tr>
         <tr>
           <td><strong>이력 1건일 때</strong></td>
-          <td class="left">그 1건의 로스율을 그대로 사용</td>
-          <td class="left">1건의 로스율 + 공장/설비/제조량 등 조건을 종합하여 예측</td>
+          <td class="left">그 1건의 로스율을 사용 (신뢰도 낮음 표시)</td>
+          <td class="left">1건의 로스율 + 작업장/관리유형/제조량 등 조건을 종합하여 예측</td>
         </tr>
         <tr>
           <td><strong>활용</strong></td>
@@ -486,18 +533,54 @@
         <tr><td><strong>투입량(g)</strong></td><td class="left">BOM 기준 성형물 1개당 벌크 투입량 (소수점 셋째자리까지 표시)</td></tr>
         <tr><td><strong>필요 수량(ea)</strong></td><td class="left">완제품 발주 수량 기준 성형물 필요 수량</td></tr>
         <tr><td><strong>이론 필요량(g)</strong></td><td class="left">필요 수량 × 투입량 (로스 미반영)</td></tr>
-        <tr><td><strong>평균 로스율</strong></td><td class="left">SAP 실적 기반 로스율 (소수점 둘째자리까지 표시)</td></tr>
+        <tr><td><strong>평균 로스율</strong></td><td class="left">SAP 실적 기반 최근 5건 가중평균 로스율 (소수점 둘째자리까지 표시)</td></tr>
         <tr><td><strong>최적 제조량(g)</strong></td><td class="left">이론 필요량에 로스율을 반영한 최종 제조 권장량</td></tr>
+        <tr><td><strong>신뢰도</strong></td><td class="left">등급 배지(높음/보통/낮음/매우 낮음) + 점수(0~100). 마우스 오버 시 표본수·편차·최신성 상세 확인</td></tr>
       </tbody>
     </table>
 
-    <h3>6-2. 이력 조회</h3>
-    <p>결과 테이블의 각 행을 <strong>더블클릭</strong>하면 해당 벌크의 과거 제조 이력을 확인할 수 있습니다.<br>제조일, 지시수량, 실적수량, 표준소요량, 투입소요량, 폐기 정보, 보정 후 투입량 등이 표시됩니다.</p>
+    <h3>6-2. 시각적 강조 표시</h3>
+    <ul>
+      <li><strong>저신뢰도 행 색상 강조</strong>
+        <ul style="margin-top:3px">
+          <li>신뢰도 "낮음" → 옅은 주황 배경</li>
+          <li>신뢰도 "매우 낮음" → 옅은 빨강 배경 + 실측 권장</li>
+        </ul>
+      </li>
+      <li><strong>ML vs SAP 예측 차이 강조</strong>
+        <ul style="margin-top:3px">
+          <li>5%p 이상 차이 → 노랑 강조</li>
+          <li>10%p 이상 차이 → 빨강 강조 (둘 중 하나가 크게 벗어남)</li>
+        </ul>
+      </li>
+      <li><strong>5건 가중평균 그룹 표시</strong> — 이력 모달에서 로스율 계산에 사용된 최근 5건을 외곽 테두리로 강조</li>
+      <li><strong>가중평균 계산 툴팁</strong> — 평균 로스율 셀에 마우스 오버 시 5건 각각의 가중치와 계산 과정 표시</li>
+    </ul>
 
-    <h3>6-3. 결과 내보내기</h3>
+    <h3>6-3. 결과 정렬</h3>
+    <p>결과 테이블 상단의 드롭다운으로 정렬 기준을 선택할 수 있습니다.</p>
+    <ul>
+      <li>기본 순서 (BOM 순)</li>
+      <li>신뢰도 낮은 순 / 높은 순 (저신뢰도 품목 우선 확인용)</li>
+      <li>제조량 많은 순 / 적은 순</li>
+      <li>로스율 높은 순 / 낮은 순</li>
+    </ul>
+
+    <h3>6-4. 이력 조회</h3>
+    <p>결과 테이블의 각 행을 <strong>더블클릭</strong>하면 해당 벌크의 과거 제조 이력을 모달에서 확인할 수 있습니다. (화면의 75% 크기로 확대 표시)<br>제조일, 지시수량, 실적수량, 표준소요량, 투입소요량, 폐기 정보, 보정 후 투입량 등이 표시되며, 로스율 계산에 사용된 최근 5건은 외곽 테두리로 강조됩니다.</p>
+
+    <h3>6-5. 결과 내보내기</h3>
     <ul>
       <li><strong>엑셀 다운로드</strong> — 결과를 XLSX 파일로 다운로드</li>
       <li><strong>CSV 다운로드</strong> — 결과를 CSV 파일로 다운로드</li>
+    </ul>
+    <p style="margin-top:8px">엑셀 파일에는 화면의 기본 컬럼(성형물/벌크/투입량/필요수량/이론 필요량/평균 로스율/최적 제조량) 외에 <strong>신뢰도 관련 5개 컬럼</strong>이 추가됩니다:</p>
+    <ul>
+      <li>신뢰도 등급</li>
+      <li>신뢰도 점수 (0~100)</li>
+      <li>유효 표본수 (몇 건의 이력이 가중평균에 사용됐는지)</li>
+      <li>편차(%) — 로스율 표준편차</li>
+      <li>최신 이력(일전) — 가장 최근 이력이 며칠 전인지</li>
     </ul>
   </div>
 
@@ -511,9 +594,23 @@
     </div>
 
     <div class="info-box">
+      <div class="label">데이터 자동 저장 (IndexedDB)</div>
+      <div>업로드된 SAP 및 환입·폐기 데이터는 브라우저의 IndexedDB에 자동 저장됩니다.<br>페이지를 닫았다 다시 열어도 데이터가 자동 복원되므로 매번 재업로드할 필요가 없습니다.<br>다른 기간의 데이터로 교체하려면 전체 초기화 또는 해당 파일 재업로드를 사용하세요.</div>
+    </div>
+
+    <div class="info-box">
+      <div class="label">BOM만 초기화 버튼</div>
+      <div>BOM 데이터만 바꾸고 싶을 때 사용합니다. 표준 대비 실적 / 벌크 폐기 데이터는 그대로 유지되므로, 기존 이력을 유지한 채 새로운 발주 건만 계산할 때 편리합니다.</div>
+    </div>
+
+    <div class="info-box">
       <div class="label">로스율 "-" 표시</div>
       <div>해당 성형물-벌크 조합의 유효한 과거 이력이 없는 경우 로스율과 최적 제조량이 "-"로 표시됩니다.<br>실적 데이터가 축적되면 자동으로 로스율이 산출됩니다.</div>
+    </div>
 
+    <div class="info-box">
+      <div class="label">신뢰도 "매우 낮음" 품목 취급</div>
+      <div>신뢰도 30점 미만("매우 낮음")인 품목은 표본이 부족하거나 로스율 편차가 큰 경우입니다.<br>예측값을 그대로 쓰지 말고 <strong>실측으로 교차 확인</strong>하거나, ML 예측값과 비교 후 판단하세요.</div>
     </div>
 
     <h3>자주 묻는 질문</h3>
@@ -530,8 +627,17 @@
     <p><strong>Q. 소수점 셋째자리 투입량도 정확히 반영되나요?</strong></p>
     <p>A. 네, 투입량은 소수점 셋째자리까지 정밀하게 계산에 반영됩니다.<br>여러 색상의 벌크를 비율로 분배하는 경우에도 정확한 예측이 가능합니다.</p>
 
+    <p><strong>Q. 신뢰도 점수가 낮게 나왔는데 믿어도 되나요?</strong></p>
+    <p>A. 신뢰도 "낮음"(30~49점) 이하는 <strong>참고용</strong>입니다. 실측 또는 ML 예측과 교차 확인하여 최종 판단하세요. 이력이 축적되면 자동으로 신뢰도가 상승합니다.</p>
+
+    <p><strong>Q. 페이지를 닫으면 업로드한 데이터가 사라지나요?</strong></p>
+    <p>A. 아닙니다. 업로드된 SAP 및 환입·폐기 데이터는 브라우저 IndexedDB에 자동 저장되어 페이지 재접속 시 자동 복원됩니다. 새 데이터로 교체하려면 해당 파일을 재업로드하거나 전체 초기화 버튼을 사용하세요.</p>
+
+    <p><strong>Q. 과거엔 최신 1건만 썼는데 왜 5건 가중평균으로 바뀌었나요?</strong></p>
+    <p>A. 단일 최근 이력이 이상값(특수 조건·측정 오차 등)이면 예측이 크게 왜곡될 수 있습니다. 최근 5건 가중평균은 최신성을 유지하면서도 이상치 1건의 영향을 줄여 더 안정적인 예측을 제공합니다.</p>
+
     <div class="footer">
-      COSMAX 생산3팀 | 파우더 벌크 제조량 예측 프로그램 v1.0 | 2026.04
+      COSMAX 생산3팀 | 파우더 벌크 제조량 예측 프로그램 v2.0 | 2026.04
     </div>
   </div>
 
