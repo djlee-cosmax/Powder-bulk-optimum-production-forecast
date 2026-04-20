@@ -4,7 +4,19 @@
   <meta charset="UTF-8">
   <title>파우더 벌크 제조량 예측 프로그램 사용 매뉴얼</title>
   <style>
-    @page { margin: 15mm 18mm; size: A4; }
+    @page {
+      size: A4;
+      margin: 15mm 18mm 22mm;
+      @bottom-center {
+        content: counter(page) " / " counter(pages);
+        font-family: 'Malgun Gothic', sans-serif;
+        font-size: 9pt;
+        color: #888;
+      }
+    }
+    @page :first {
+      @bottom-center { content: ""; }
+    }
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
