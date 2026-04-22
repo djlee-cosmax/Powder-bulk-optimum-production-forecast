@@ -1009,7 +1009,7 @@ function renderBomCalcResults(results) {
           '"</tr>";' +
         '}' +
         'document.getElementById("tableArea").innerHTML = "<table><thead><tr>" +' +
-          '"<th>성형물 코드</th><th>성형물명</th><th>벌크 코드</th><th>벌크명</th><th>투입량(g)</th><th>필요 수량(ea)</th><th>성형 가용(ea)</th><th>최종 수량(ea)</th><th>이론 필요량(g)</th><th>로스율</th><th>최적 제조량(g)</th><th>신뢰도</th>" +' +
+          '"<th>성형물 코드</th><th>성형물명</th><th>벌크 코드</th><th>벌크명</th><th>투입량(g)</th><th>필요 수량(ea)</th><th>가용 재고(ea)</th><th>최종 수량(ea)</th><th>이론 필요량(g)</th><th>로스율</th><th>최적 제조량(g)</th><th>신뢰도</th>" +' +
           '"</tr></thead><tbody>" + rows + "</tbody></table>";' +
       '}' +
       'function toggleML() {' +
@@ -1179,7 +1179,7 @@ function renderBomCalcResults(results) {
       'function downloadExcel() {' +
         'var code = fertOrder[currentPage];' +
         'var group = fertGroups[code];' +
-        'var headers = ["성형물 코드","성형물명","벌크 코드","벌크명","투입량(g)","필요 수량(ea)","성형 가용(ea)","최종 수량(ea)","이론 필요량(g)","평균 로스율","최적 제조량(g)","신뢰도","신뢰도 점수","유효 표본수","편차(%)","최신 이력(일전)"];' +
+        'var headers = ["성형물 코드","성형물명","벌크 코드","벌크명","투입량(g)","필요 수량(ea)","가용 재고(ea)","최종 수량(ea)","이론 필요량(g)","평균 로스율","최적 제조량(g)","신뢰도","신뢰도 점수","유효 표본수","편차(%)","최신 이력(일전)"];' +
         'var rows = [headers];' +
         'var confLabelMap = { high: "높음", medium: "보통", low: "낮음", verylow: "매우 낮음", none: "-" };' +
         'for (var i = 0; i < group.items.length; i++) {' +
