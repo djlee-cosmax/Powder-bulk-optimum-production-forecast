@@ -510,6 +510,43 @@ function calcBomNeeds() {
     return;
   }
 
+  // === 성형물 가용재고 집계 (홋수별 그룹) ===
+  var shadeGroups = {};
+  var moldToShadeKey = {};
+  var _parentStack = [];
+  var _fertCode = null;
+
+  for (var i = 0; i < parsedBomData.length; i++) {
+    var d = parsedBomData[i];
+    _parentStack.length = d.lev + 1;
+    _parentStack[d.lev] = d;
+
+    if (d.lev === 0 && orderMap[d.code]) {
+      _fertCode = d.code;
+    } else if (d.lev === 0) {
+      _fertCode = null;
+    }
+    if (!_fertCode) continue;
+
+    if (d.code.charAt(0) === '2' && d.mtype === 'HAL1') {
+      var parent = d.lev > 0 ? _parentStack[d.lev - 1] : null;
+      var groupKey;
+      if (!parent || parent.code.charAt(0) === '9') {
+        // 완제품 바로 아래 → 각 성형물이 개별 홋수
+        groupKey = _fertCode + '_' + d.code;
+      } else {
+        // 중간 부모(반제품 등) 아래 → 같은 부모 = 같은 홋수
+        groupKey = _fertCode + '_' + parent.code;
+      }
+      if (!shadeGroups[groupKey]) {
+        shadeGroups[groupKey] = { totalAvailable: 0, moldCodes: [] };
+      }
+      shadeGroups[groupKey].totalAvailable += (d.available || 0);
+      shadeGroups[groupKey].moldCodes.push(d.code);
+      moldToShadeKey[_fertCode + '_' + d.code] = groupKey;
+    }
+  }
+
   // BOM 트리를 순회하여 완제품 → 성형물 → 벌크 구조 추출
   var results = [];
   var currentFert = null;
@@ -535,7 +572,11 @@ function calcBomNeeds() {
 
     // 벌크 (HAL2, 3코드)
     if (d.code.charAt(0) === '3' && d.mtype === 'HAL2' && currentMold) {
-      var moldNeedQty = currentFert.orderQty * currentMold.inputQty;
+      var moldNeedQtyOriginal = currentFert.orderQty * currentMold.inputQty;
+      // 성형물 가용재고 차감 (홋수별 합산)
+      var shadeKey = moldToShadeKey[currentFert.code + '_' + currentMold.code];
+      var shadeAvailable = (shadeKey && shadeGroups[shadeKey]) ? shadeGroups[shadeKey].totalAvailable : 0;
+      var moldNeedQty = shadeAvailable > 0 ? Math.max(0, moldNeedQtyOriginal - shadeAvailable) : moldNeedQtyOriginal;
       var bulkTheoryNeed = moldNeedQty * d.inputQty;
 
       // 최적 제조량 예측 (SAP 실적 데이터 있으면)
@@ -615,6 +656,8 @@ function calcBomNeeds() {
         moldCode: currentMold.code,
         moldName: currentMold.name,
         moldNeedQty: moldNeedQty,
+        moldNeedQtyOriginal: moldNeedQtyOriginal,
+        shadeAvailable: shadeAvailable,
         bulkCode: d.code,
         bulkName: d.name,
         bulkInputPerUnit: d.inputQty,
@@ -739,6 +782,7 @@ function renderBomCalcResults(results) {
       'tr.row-none:hover { background:#f0f0f0; }' +
       'td.diff-warn { background:#fff3cd !important; color:#856404; font-weight:700; position:relative; }' +
       'td.diff-alert { background:#f8d7da !important; color:#721c24; font-weight:700; position:relative; }' +
+      '.ml-sub { display:block; font-size:10px; color:#7c4dff; font-weight:600; margin-top:2px; }' +
     '</style></head><body>' +
     '<div class="top-bar">' +
       '<div class="nav-area">' +
@@ -862,9 +906,11 @@ function renderBomCalcResults(results) {
             '"<td>" + r.bulkCode + "</td>" +' +
             '"<td class=\\"name\\">" + r.bulkName + "</td>" +' +
             '"<td class=\\"num\\">" + (Math.round(r.bulkInputPerUnit * 1000) / 1000) + "</td>" +' +
+            '"<td class=\\"num\\">" + Math.round(r.moldNeedQtyOriginal).toLocaleString() + "</td>" +' +
+            '"<td class=\\"num\\">" + (r.shadeAvailable > 0 ? Math.round(r.shadeAvailable).toLocaleString() : "-") + "</td>" +' +
             '"<td class=\\"num\\">" + Math.round(r.moldNeedQty).toLocaleString() + "</td>" +' +
             '"<td class=\\"num highlight\\">" + Math.round(r.bulkTheoryNeed).toLocaleString() + "</td>" +' +
-            // 차이 계산 (ML 모드 + 두 값 모두 있을 때)
+            // 로스율/제조량 셀 (ML 모드 시 같은 셀에 인라인 표시)
             '(function() {' +
               'var diff = null; var diffClass = "";' +
               'if (showML && mlRate !== null && r.avgLossRate !== null) {' +
@@ -874,20 +920,21 @@ function renderBomCalcResults(results) {
               '}' +
               'var diffTip = diff !== null ? " title=\\"통계 vs ML 차이: " + diff.toFixed(2) + "%p\\"" : "";' +
               'var html = "";' +
-              'html += "<td class=\\"num " + diffClass + "\\"" + diffTip + ">" + (r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-") + "</td>";' +
-              'html += "<td class=\\"num optimal\\">" + (r.optimalQty !== null ? Math.round(r.optimalQty).toLocaleString() : "-") + "</td>";' +
+              // 로스율 셀: 통계 + ML 인라인
+              'var lossText = r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-";' +
+              'if (showML && mlRate !== null) lossText += "<span class=\\"ml-sub\\">ML " + mlRate.toFixed(2) + "%</span>";' +
+              'html += "<td class=\\"num " + diffClass + "\\"" + diffTip + ">" + lossText + "</td>";' +
+              // 제조량 셀: 통계 + ML 인라인
+              'var qtyText = r.optimalQty !== null ? Math.round(r.optimalQty).toLocaleString() : "-";' +
+              'if (showML && mlQty !== null) qtyText += "<span class=\\"ml-sub\\">ML " + mlQty.toLocaleString() + "</span>";' +
+              'html += "<td class=\\"num optimal\\">" + qtyText + "</td>";' +
               'html += "<td>" + confBadge + "</td>";' +
-              'if (showML) {' +
-                'html += "<td class=\\"num ml-col " + diffClass + "\\"" + diffTip + ">" + (mlRate !== null ? mlRate.toFixed(2) + "%" : "-") + "</td>";' +
-                'html += "<td class=\\"num ml-col\\">" + (mlQty !== null ? mlQty.toLocaleString() : "-") + "</td>";' +
-              '}' +
               'return html;' +
             '})() +' +
           '"</tr>";' +
         '}' +
-        'var mlHeaders = showML ? "<th class=\\"ml-col\\">ML 로스율</th><th class=\\"ml-col\\">ML 제조량(g)</th>" : "";' +
         'document.getElementById("tableArea").innerHTML = "<table><thead><tr>" +' +
-          '"<th>성형물 코드</th><th>성형물명</th><th>벌크 코드</th><th>벌크명</th><th>투입량(g)</th><th>필요 수량(ea)</th><th>이론 필요량(g)</th><th>평균 로스율</th><th>최적 제조량(g)</th><th>신뢰도</th>" + mlHeaders +' +
+          '"<th>성형물 코드</th><th>성형물명</th><th>벌크 코드</th><th>벌크명</th><th>투입량(g)</th><th>필요 수량(ea)</th><th>성형 가용(ea)</th><th>최종 수량(ea)</th><th>이론 필요량(g)</th><th>로스율</th><th>최적 제조량(g)</th><th>신뢰도</th>" +' +
           '"</tr></thead><tbody>" + rows + "</tbody></table>";' +
       '}' +
       'function toggleML() {' +
@@ -1057,7 +1104,7 @@ function renderBomCalcResults(results) {
       'function downloadExcel() {' +
         'var code = fertOrder[currentPage];' +
         'var group = fertGroups[code];' +
-        'var headers = ["성형물 코드","성형물명","벌크 코드","벌크명","투입량(g)","필요 수량(ea)","이론 필요량(g)","평균 로스율","최적 제조량(g)","신뢰도","신뢰도 점수","유효 표본수","편차(%)","최신 이력(일전)"];' +
+        'var headers = ["성형물 코드","성형물명","벌크 코드","벌크명","투입량(g)","필요 수량(ea)","성형 가용(ea)","최종 수량(ea)","이론 필요량(g)","평균 로스율","최적 제조량(g)","신뢰도","신뢰도 점수","유효 표본수","편차(%)","최신 이력(일전)"];' +
         'var rows = [headers];' +
         'var confLabelMap = { high: "높음", medium: "보통", low: "낮음", verylow: "매우 낮음", none: "-" };' +
         'for (var i = 0; i < group.items.length; i++) {' +
@@ -1066,7 +1113,7 @@ function renderBomCalcResults(results) {
           'rows.push([' +
             'r.moldCode, r.moldName, r.bulkCode, r.bulkName,' +
             'Math.round(r.bulkInputPerUnit * 1000) / 1000,' +
-            'Math.round(r.moldNeedQty), Math.round(r.bulkTheoryNeed),' +
+            'Math.round(r.moldNeedQtyOriginal), (r.shadeAvailable > 0 ? Math.round(r.shadeAvailable) : "-"), Math.round(r.moldNeedQty), Math.round(r.bulkTheoryNeed),' +
             '(r.avgLossRate !== null ? r.avgLossRate.toFixed(2) + "%" : "-"),' +
             '(r.optimalQty !== null ? Math.round(r.optimalQty) : "-"),' +
             'confLabel,' +
@@ -1077,7 +1124,7 @@ function renderBomCalcResults(results) {
           ']);' +
         '}' +
         'var ws = XLSX.utils.aoa_to_sheet(rows);' +
-        'ws["!cols"] = [{wch:14},{wch:25},{wch:14},{wch:25},{wch:10},{wch:12},{wch:14},{wch:10},{wch:14},{wch:10},{wch:12},{wch:10},{wch:10},{wch:14}];' +
+        'ws["!cols"] = [{wch:14},{wch:25},{wch:14},{wch:25},{wch:10},{wch:12},{wch:12},{wch:12},{wch:14},{wch:10},{wch:14},{wch:10},{wch:12},{wch:10},{wch:10},{wch:14}];' +
         'var wb = XLSX.utils.book_new();' +
         'XLSX.utils.book_append_sheet(wb, ws, "벌크별 필요 제조량");' +
         'XLSX.writeFile(wb, "벌크별_필요_제조량_" + new Date().toISOString().slice(0,10) + ".xlsx");' +
