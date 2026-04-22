@@ -125,6 +125,11 @@ function parseBomTxt(text) {
         // 자재코드: MTyp 다음 컬럼
         if (!colMap.code) colMap.code = (colMap.mtype || 1) + 1;
         if (!colMap.name) colMap.name = colMap.code + 1;
+        // 투입수량 없으면 소요수량으로 대체
+        if (colMap.inputQty === undefined && colMap.needQty !== undefined) {
+          colMap.inputQty = colMap.needQty;
+          console.log('[BOM] 투입수량 미감지 → 소요수량으로 대체');
+        }
 
         // TXT 한글 깨짐 대비: BOM 조회 XLSX 기준 고정 인덱스 fallback
         // 헤더순서: Lev(1), MTyp(2), 자재(3), 자재내역(4), 자재상태(5), 사급여부(6), 투코드(7), 이름1(8), 투입수량(9), 소요수량(10), BUn(11), 재고합계(12), 가용(13), 품질검사(14), ...설명1(21), 전체이름(22)
@@ -143,12 +148,11 @@ function parseBomTxt(text) {
           { key: 'mtype', label: 'MTyp (자재 유형)' },
           { key: 'code', label: '자재 (자재코드)' },
           { key: 'name', label: '자재내역 (제품명)' },
-          { key: 'inputQty', label: '투입수량' }
+          { key: 'inputQty', label: '투입수량 또는 소요수량' }
         ];
         var warnCols = [
           { key: 'stockTotal', label: '재고합계' },
           { key: 'available', label: '가용 (가용재고)' },
-          { key: 'needQty', label: '소요수량' },
           { key: 'unit', label: 'BUn (단위)' }
         ];
         var missingRequired = [];
@@ -265,7 +269,7 @@ function parseBomCsv(text) {
       { names: ['MTyp', '자재 유형'], label: 'MTyp (자재 유형)' },
       { names: ['자재'], label: '자재 (자재코드)' },
       { names: ['자재내역'], label: '자재내역 (제품명)' },
-      { names: ['투입수량'], label: '투입수량' }
+      { names: ['투입수량', '구성부품소요수량', '소요수량'], label: '투입수량 또는 소요수량' }
     ];
     var csvWarn = [
       { names: ['재고합계'], label: '재고합계' },
@@ -312,7 +316,7 @@ function parseBomCsv(text) {
       mtype: mtype,
       code: code,
       name: name,
-      inputQty: parseFloat(String(r['투입수량'] || '0').replace(/,/g, '')) || 0,
+      inputQty: parseFloat(String(r['투입수량'] || r['구성부품소요수량'] || r['소요수량'] || '0').replace(/,/g, '')) || 0,
       needQty: parseFloat(String(r['구성부품소요수량'] || r['소요수량'] || '0').replace(/,/g, '')) || 0,
       unit: (r['기본 단위'] || r['BUn'] || '').trim(),
       stockTotal: parseFloat(String(r['재고합계'] || '0').replace(/,/g, '')) || 0,
