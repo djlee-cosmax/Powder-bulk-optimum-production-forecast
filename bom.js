@@ -136,6 +136,37 @@ function parseBomTxt(text) {
         if (colMap.customerName === undefined) colMap.customerName = colMap.lev + 19;
         if (colMap.desc1 === undefined) colMap.desc1 = colMap.lev + 20;
         if (colMap.fullName === undefined) colMap.fullName = colMap.lev + 21;
+
+        // 필수 컬럼 매핑 검증
+        var requiredCols = [
+          { key: 'lev', label: 'Lev (레벨)' },
+          { key: 'mtype', label: 'MTyp (자재 유형)' },
+          { key: 'code', label: '자재 (자재코드)' },
+          { key: 'name', label: '자재내역 (제품명)' },
+          { key: 'inputQty', label: '투입수량' }
+        ];
+        var warnCols = [
+          { key: 'stockTotal', label: '재고합계' },
+          { key: 'available', label: '가용 (가용재고)' },
+          { key: 'needQty', label: '소요수량' },
+          { key: 'unit', label: 'BUn (단위)' }
+        ];
+        var missingRequired = [];
+        var missingWarn = [];
+        for (var rq = 0; rq < requiredCols.length; rq++) {
+          if (colMap[requiredCols[rq].key] === undefined) missingRequired.push(requiredCols[rq].label);
+        }
+        for (var wq = 0; wq < warnCols.length; wq++) {
+          if (colMap[warnCols[wq].key] === undefined) missingWarn.push(warnCols[wq].label);
+        }
+        if (missingRequired.length > 0) {
+          alert('⚠️ BOM 파일에서 필수 컬럼을 찾을 수 없습니다.\n\n' +
+            '누락된 필수 컬럼:\n• ' + missingRequired.join('\n• ') +
+            '\n\nSAP BOM 조회 레이아웃을 확인해 주세요.\n' +
+            '필수 컬럼이 포함된 레이아웃으로 다시 조회해 주세요.');
+        } else if (missingWarn.length > 0) {
+          console.warn('[BOM 경고] 일부 컬럼 미감지 (fallback 적용됨): ' + missingWarn.join(', '));
+        }
       }
       continue;
     }
@@ -225,6 +256,46 @@ function parseBomCsv(text) {
   var result = Papa.parse(text, { header: true, skipEmptyLines: true });
   var rows = result.data;
   var bomData = [];
+
+  // CSV 필수 컬럼 검증
+  if (rows.length > 0) {
+    var csvHeaders = Object.keys(rows[0]);
+    var csvRequired = [
+      { names: ['Lev'], label: 'Lev (레벨)' },
+      { names: ['MTyp', '자재 유형'], label: 'MTyp (자재 유형)' },
+      { names: ['자재'], label: '자재 (자재코드)' },
+      { names: ['자재내역'], label: '자재내역 (제품명)' },
+      { names: ['투입수량'], label: '투입수량' }
+    ];
+    var csvWarn = [
+      { names: ['재고합계'], label: '재고합계' },
+      { names: ['가용'], label: '가용 (가용재고)' }
+    ];
+    var csvMissingReq = [];
+    var csvMissingWarn = [];
+    for (var cq = 0; cq < csvRequired.length; cq++) {
+      var found = false;
+      for (var cn = 0; cn < csvRequired[cq].names.length; cn++) {
+        if (csvHeaders.indexOf(csvRequired[cq].names[cn]) !== -1) { found = true; break; }
+      }
+      if (!found) csvMissingReq.push(csvRequired[cq].label);
+    }
+    for (var cw = 0; cw < csvWarn.length; cw++) {
+      var found2 = false;
+      for (var cn2 = 0; cn2 < csvWarn[cw].names.length; cn2++) {
+        if (csvHeaders.indexOf(csvWarn[cw].names[cn2]) !== -1) { found2 = true; break; }
+      }
+      if (!found2) csvMissingWarn.push(csvWarn[cw].label);
+    }
+    if (csvMissingReq.length > 0) {
+      alert('⚠️ CSV 파일에서 필수 컬럼을 찾을 수 없습니다.\n\n' +
+        '누락된 필수 컬럼:\n• ' + csvMissingReq.join('\n• ') +
+        '\n\nSAP BOM 조회 레이아웃을 확인해 주세요.\n' +
+        '필수 컬럼이 포함된 레이아웃으로 다시 조회해 주세요.');
+    } else if (csvMissingWarn.length > 0) {
+      console.warn('[BOM CSV 경고] 일부 컬럼 미감지: ' + csvMissingWarn.join(', '));
+    }
+  }
 
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
