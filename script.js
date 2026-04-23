@@ -98,7 +98,6 @@ function loadSapFromCache() {
       statusEl.textContent = saved.fileName + ' (' + sapCount.toLocaleString() + '건, 저장: ' + savedDate + ')';
       statusEl.classList.add('loaded');
     }
-    updateAutocompleteData();
     return true;
   }).catch(function(e) { console.error('SAP 캐시 로드 실패:', e); return false; });
 }
@@ -119,7 +118,7 @@ function loadReturnFromCache() {
     var savedDate = new Date(saved.savedAt).toLocaleDateString('ko-KR');
     var statusEl = document.getElementById('returnStatus');
     if (statusEl) {
-      statusEl.textContent = saved.fileName + ' (' + returnCount.toLocaleString() + '건, 저장: ' + savedDate + ')';
+      statusEl.textContent = buildReturnStatus(saved.fileName, savedDate);
       statusEl.classList.add('loaded');
     }
     return true;
@@ -240,7 +239,6 @@ function sapUploadComplete(fileName) {
   document.getElementById('sapStatus').classList.add('loaded');
   checkShowReset();
   document.getElementById('loadingOverlay').style.display = 'none';
-  updateAutocompleteData();
   saveSapToCache(fileName);
 }
 
@@ -284,6 +282,31 @@ function setupSapUpload() {
 }
 
 // ============ 환입/폐기 데이터 파싱 (CSV + XLSX 지원) ============
+// returnIndex에 쌓인 전체 엔트리 중 날짜 범위 (YYYY-MM-DD 기준)
+function getReturnDateRange() {
+  var min = null, max = null;
+  var keys = Object.keys(returnIndex);
+  for (var k = 0; k < keys.length; k++) {
+    var list = returnIndex[keys[k]];
+    for (var i = 0; i < list.length; i++) {
+      var d = list[i].date;
+      if (!d) continue;
+      if (min === null || d < min) min = d;
+      if (max === null || d > max) max = d;
+    }
+  }
+  return min && max ? { min: min, max: max } : null;
+}
+
+// 환입/폐기 상태 문자열 빌더
+function buildReturnStatus(fileName, savedDate) {
+  var parts = [returnCount.toLocaleString() + '건'];
+  var range = getReturnDateRange();
+  if (range) parts.push('기간: ' + range.min + ' ~ ' + range.max);
+  if (savedDate) parts.push('저장: ' + savedDate);
+  return fileName + ' (' + parts.join(', ') + ')';
+}
+
 function processReturnRow(r, workTeamCode) {
   var prodOrder = String(getCol(r, ['생산오더']) || '').trim();
   var bulkCode = String(getCol(r, ['벌크코드']) || '').trim();
@@ -339,7 +362,7 @@ function setupReturnUpload() {
           var rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
           rows.forEach(function(r) { processReturnRow(r, workTeamCode); });
         });
-        document.getElementById('returnStatus').textContent = file.name + ' (' + returnCount.toLocaleString() + '건)';
+        document.getElementById('returnStatus').textContent = buildReturnStatus(file.name);
         document.getElementById('returnStatus').classList.add('loaded');
         document.getElementById('loadingOverlay').style.display = 'none';
         checkShowReset();
@@ -355,7 +378,7 @@ function setupReturnUpload() {
           skipEmptyLines: true,
           step: function(row) { processReturnRow(row.data); },
           complete: function() {
-            document.getElementById('returnStatus').textContent = file.name + ' (' + returnCount.toLocaleString() + '건)';
+            document.getElementById('returnStatus').textContent = buildReturnStatus(file.name);
             document.getElementById('returnStatus').classList.add('loaded');
             document.getElementById('loadingOverlay').style.display = 'none';
             checkShowReset();
@@ -366,102 +389,6 @@ function setupReturnUpload() {
     }
   });
 }
-
-// ============ 자동완성 ============
-var acItems = []; // { code, name }
-
-function updateAutocompleteData() {
-  acItems = Object.keys(moldBulkMap).map(function(code) {
-    return { code: code, name: moldNameIndex[code] || '' };
-  });
-}
-
-function setupAutocomplete(input) {
-  var list = input.parentElement.querySelector('.autocomplete-list');
-  var activeIdx = -1;
-
-  input.addEventListener('input', function() {
-    var val = input.value.trim().toUpperCase();
-    showList(val);
-  });
-
-  input.addEventListener('focus', function() {
-    var val = input.value.trim().toUpperCase();
-    showList(val);
-  });
-
-  input.addEventListener('keydown', function(e) {
-    var items = list.querySelectorAll('.autocomplete-item');
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      activeIdx = Math.min(activeIdx + 1, items.length - 1);
-      highlightItem(items);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      activeIdx = Math.max(activeIdx - 1, 0);
-      highlightItem(items);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (activeIdx >= 0 && items[activeIdx]) {
-        input.value = items[activeIdx].dataset.code;
-        list.classList.remove('show');
-        activeIdx = -1;
-      }
-    } else if (e.key === 'Escape') {
-      list.classList.remove('show');
-    }
-  });
-
-  document.addEventListener('click', function(e) {
-    if (!input.parentElement.contains(e.target)) {
-      list.classList.remove('show');
-    }
-  });
-
-  function showList(val) {
-    activeIdx = -1;
-    var filtered = acItems;
-    if (val) {
-      filtered = acItems.filter(function(item) {
-        return item.code.toUpperCase().indexOf(val) !== -1 || item.name.toUpperCase().indexOf(val) !== -1;
-      });
-    }
-
-    if (filtered.length === 0) {
-      list.classList.remove('show');
-      return;
-    }
-
-    var maxShow = 50;
-    list.innerHTML = filtered.slice(0, maxShow).map(function(item) {
-      return '<div class="autocomplete-item" data-code="' + item.code + '">' +
-        '<span class="ac-code">' + item.code + '</span>' +
-        '<span class="ac-name">' + item.name + '</span>' +
-      '</div>';
-    }).join('');
-
-    list.querySelectorAll('.autocomplete-item').forEach(function(el) {
-      el.addEventListener('mousedown', function(e) {
-        e.preventDefault();
-        input.value = el.dataset.code;
-        list.classList.remove('show');
-      });
-    });
-
-    list.classList.add('show');
-  }
-
-  function highlightItem(items) {
-    items.forEach(function(el, i) {
-      el.classList.toggle('active', i === activeIdx);
-    });
-    if (items[activeIdx]) items[activeIdx].scrollIntoView({ block: 'nearest' });
-  }
-}
-
-// 초기 input에 자동완성 연결 (예측 탭 있을 때만)
-var initialMoldInput = document.querySelector('.mold-code-input');
-if (initialMoldInput) setupAutocomplete(initialMoldInput);
 
 // ============ 파일 업로드 초기화 ============
 setupSapUpload();
@@ -497,7 +424,6 @@ function resetAllUploads() {
   sapCount = 0;
   returnIndex = {};
   returnCount = 0;
-  acItems = [];
   uploadCount = 0;
 
   document.getElementById('bomFile').value = '';
@@ -528,49 +454,6 @@ function resetBomOnly() {
   document.getElementById('bomOrderSection').style.display = 'none';
   document.getElementById('bomResultSection').style.display = 'none';
   document.getElementById('resetBomBtn').style.display = 'none';
-}
-
-// ============ 숫자 콤마 포맷 ============
-function formatQtyInput(e) {
-  var input = e.target;
-  var raw = input.value.replace(/[^0-9]/g, '');
-  if (raw === '') { input.value = ''; return; }
-  input.value = Number(raw).toLocaleString();
-}
-
-var initialOrderInput = document.querySelector('.order-qty-input');
-if (initialOrderInput) initialOrderInput.addEventListener('input', formatQtyInput);
-
-// ============ 품목 행 추가/삭제 ============
-var addRowBtn = document.getElementById('addRowBtn');
-if (addRowBtn) {
-  addRowBtn.addEventListener('click', function() {
-    var container = document.getElementById('inputRows');
-    var index = container.children.length;
-    var row = document.createElement('div');
-    row.className = 'input-row';
-    row.dataset.index = index;
-    row.innerHTML =
-      '<div class="input-group autocomplete-wrap">' +
-        '<label>성형물 코드</label>' +
-        '<input type="text" class="mold-code-input" placeholder="성형물 코드 입력 (2로 시작)" autocomplete="off">' +
-        '<div class="autocomplete-list"></div>' +
-      '</div>' +
-      '<div class="input-group">' +
-        '<label>성형 지시 수량</label>' +
-        '<input type="text" class="order-qty-input" placeholder="수량 입력">' +
-      '</div>' +
-      '<button class="remove-row-btn" onclick="removeRow(this)" title="삭제">✕</button>';
-    container.appendChild(row);
-    row.querySelector('.order-qty-input').addEventListener('input', formatQtyInput);
-    setupAutocomplete(row.querySelector('.mold-code-input'));
-  });
-}
-
-function removeRow(btn) {
-  var container = document.getElementById('inputRows');
-  if (!container || container.children.length <= 1) return;
-  btn.closest('.input-row').remove();
 }
 
 // ============ 단일 품목 예측 ============
@@ -620,7 +503,7 @@ function predictOne(moldCode, orderQty) {
       var actualInput = rec.actualInput;
       var stdNeed = rec.stdNeed;
 
-      // 환입/폐기 데이터로 보정
+      // 환입/폐기 데이터로 보정 (폐기분은 투입소요량에 포함되어 있으므로 차감)
       var returnData = returnIndex[rec.prodOrder];
       if (returnData) {
         for (var j = 0; j < returnData.length; j++) {
@@ -634,13 +517,10 @@ function predictOne(moldCode, orderQty) {
           }
           if (!rd.bulkCode || rd.bulkCode === rec.bulkCode) {
             if (rd.type === '폐기') {
-              // 폐기: 전산에 투입으로 잡혀있으나 실제 사용하지 않았으므로 차감
               actualInput = actualInput - rd.qty;
             }
           }
         }
-      } else {
-        actualInput = rec.actualInput + rec.damageQty;
       }
 
       var lossRate = ((actualInput - stdNeed) / stdNeed) * 100;
@@ -737,75 +617,3 @@ function predictOne(moldCode, orderQty) {
   });
 }
 
-// ============ 전체 예측 실행 ============
-var predictBtn = document.getElementById('predictBtn');
-if (predictBtn) predictBtn.addEventListener('click', function() {
-  if (sapCount === 0) {
-    alert('먼저 "표준 대비 실적 데이터"를 업로드해 주세요.');
-    return;
-  }
-
-  var rows = document.querySelectorAll('#inputRows .input-row');
-  var inputList = [];
-
-  rows.forEach(function(row) {
-    var moldCode = row.querySelector('.mold-code-input').value.trim();
-    var orderQty = parseNum(row.querySelector('.order-qty-input').value);
-    if (moldCode && orderQty) inputList.push({ moldCode: moldCode, orderQty: orderQty });
-  });
-
-  if (inputList.length === 0) {
-    alert('성형물 코드와 지시 수량을 입력해 주세요.');
-    return;
-  }
-
-  // 로딩 표시
-  document.getElementById('loadingOverlay').style.display = 'flex';
-  document.querySelector('.loading-text').textContent = '예측 중...';
-  document.getElementById('resultSection').style.display = 'none';
-
-  setTimeout(function() {
-    var results = [];
-    for (var i = 0; i < inputList.length; i++) {
-      var predicted = predictOne(inputList[i].moldCode, inputList[i].orderQty);
-      for (var j = 0; j < predicted.length; j++) {
-        results.push(predicted[j]);
-      }
-    }
-
-    // 로딩 숨김
-    document.getElementById('loadingOverlay').style.display = 'none';
-
-    // 결과 테이블 표시
-    document.getElementById('resultSection').style.display = 'block';
-    var tbody = document.getElementById('resultBody');
-
-    var html = '';
-    for (var i = 0; i < results.length; i++) {
-      var r = results[i];
-      if (r.error) {
-        html += '<tr><td>' + (i + 1) + '</td><td>' + r.moldCode + '</td><td class="no-data" colspan="9">' + r.error + '</td></tr>';
-      } else {
-        html += '<tr>' +
-          '<td>' + (i + 1) + '</td>' +
-          '<td>' + r.moldCode + '</td>' +
-          '<td>' + r.moldName + '</td>' +
-          '<td>' + r.bulkCode + '</td>' +
-          '<td>' + r.bulkName + '</td>' +
-          '<td>' + r.stdInputPerUnit.toFixed(2) + '</td>' +
-          '<td>' + r.orderQty.toLocaleString() + '</td>' +
-          '<td>' + Math.round(r.theoryNeed).toLocaleString() + '</td>' +
-          '<td>' + (r.avgLossRate !== null ? r.avgLossRate.toFixed(1) + '% (' + r.historyCount + '건)' : '-') + '</td>' +
-          '<td>' + (function() {
-            var parts = [];
-            if (r.returnActualCount > 0) parts.push('환입 ' + r.returnActualCount + '건');
-            if (r.returnDisposalCount > 0) parts.push('폐기 ' + r.returnDisposalCount + '건');
-            return parts.length > 0 ? parts.join(' / ') : '-';
-          })() + '</td>' +
-          '<td class="optimal">' + (r.optimalQty !== null ? r.optimalQty.toLocaleString() : '-') + '</td>' +
-        '</tr>';
-      }
-    }
-    tbody.innerHTML = html;
-  }, 100);
-});

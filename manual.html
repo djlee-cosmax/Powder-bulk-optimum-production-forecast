@@ -299,6 +299,11 @@
       <div class="label">참고</div>
       <div>폐기 데이터가 없어도 예측은 가능합니다.<br>폐기 데이터를 함께 업로드하면 실제 사용량을 보정하여 더 정확한 로스율을 산출할 수 있습니다.</div>
     </div>
+
+    <div class="info-box">
+      <div class="label">SAP BOM 컬럼 호환성</div>
+      <div>BOM 데이터 업로드 시 <strong>필수 컬럼(Lev, MTyp, 자재, 자재내역, 투입수량 또는 소요수량)</strong>을 자동 검증합니다.<br>부서별 SAP 레이아웃 차이로 "투입수량" 컬럼이 없는 경우 자동으로 <strong>"소요수량" 컬럼으로 대체</strong>하여 사용하므로, 다른 부서의 BOM 파일도 호환됩니다.<br>필수 컬럼이 누락된 경우 에러 메시지와 함께 업로드가 중단됩니다.</div>
+    </div>
   </div>
 
   <!-- 3. 사용 방법 -->
@@ -337,12 +342,24 @@
   <div class="section">
     <h2 class="section-title"><span class="num">4</span> 예측 계산 방식</h2>
 
-    <h3>4-1. 이론 필요량 산출</h3>
-    <p>BOM 데이터에 기재된 투입량을 기준으로 이론 필요량을 계산합니다.</p>
-    <div class="formula">이론 필요량(g) = 성형물 필요 수량(ea) × 벌크 투입량(g)</div>
-    <p>예시: 성형물 30,000ea × 벌크 투입량 1.9g = <strong>57,000g</strong></p>
+    <h3>4-1. 성형물 필요 수량 산정 (가용재고 차감)</h3>
+    <p>완제품 발주 수량 기준으로 산출된 성형물 필요 수량에서, 현재 보유 중인 <strong>성형물 가용재고</strong>를 차감하여 실제 제조가 필요한 성형물 수량(최종 수량)을 산정합니다.</p>
+    <div class="formula">최종 수량(ea) = 필요 수량(ea) − 가용 재고(ea)</div>
+    <p>예시: 필요 수량 30,000ea − 가용 재고 5,000ea = <strong>최종 수량 25,000ea</strong></p>
 
-    <h3>4-2. 로스율 산출</h3>
+    <div class="info-box">
+      <div class="label">동일 홋수 내 2-code 다수 보유 시</div>
+      <div>같은 홋수(완제품) 아래에 2-code(성형물)가 2개 이상 매핑된 경우, 해당 홋수의 모든 2-code 가용재고를 <strong>합산</strong>하여 차감합니다.<br>예: 동일 홋수에 2-code A(재고 3,000ea)와 2-code B(재고 2,000ea)가 있으면 가용재고 5,000ea로 합산 처리.</div>
+    </div>
+
+    <p>가용재고가 필요 수량보다 많은 경우 최종 수량은 <strong>0</strong>으로 처리되어 벌크 제조가 불필요함을 나타냅니다.</p>
+
+    <h3>4-2. 이론 필요량 산출</h3>
+    <p>위에서 산정된 성형물 최종 수량을 기준으로 벌크 이론 필요량을 계산합니다.</p>
+    <div class="formula">이론 필요량(g) = 최종 수량(ea) × 벌크 투입량(g)</div>
+    <p>예시: 최종 수량 25,000ea × 벌크 투입량 1.9g = <strong>47,500g</strong></p>
+
+    <h3>4-3. 로스율 산출</h3>
     <p>SAP 실적 데이터에서 해당 성형물-벌크 조합의 과거 이력을 조회하여 로스율을 계산합니다.</p>
     <div class="formula">로스율(%) = (실제 투입량 - 표준소요량) ÷ 표준소요량 × 100</div>
 
@@ -359,7 +376,7 @@
       <div>단일 최근 이력만 사용하면 해당 1건이 이상값인 경우(특수 조건, 측정 오차 등) 예측이 크게 왜곡될 수 있습니다.<br>최근 5건의 가중평균을 사용하면 최신 현장 상황을 반영하면서도 이상치 1건의 영향을 줄일 수 있습니다.</div>
     </div>
 
-    <h3>4-3. 신뢰도 점수</h3>
+    <h3>4-4. 신뢰도 점수</h3>
     <p>각 벌크의 로스율 예측에 대해 <strong>0~100점</strong>의 신뢰도 점수를 함께 산출하여, 예측값을 얼마나 믿을 수 있는지 직관적으로 확인할 수 있게 합니다.</p>
 
     <table>
@@ -400,7 +417,7 @@
       </tbody>
     </table>
 
-    <h3>4-4. 최적 제조량 산출</h3>
+    <h3>4-5. 최적 제조량 산출</h3>
     <p>이론 필요량에 로스율을 반영하여 최적 제조량을 산출합니다.</p>
     <div class="formula">최적 제조량(g) = 이론 필요량 × (1 + 로스율 ÷ 100)</div>
     <p>예시: 57,000g × (1 + 10.59% ÷ 100) = 57,000 × 1.1059 = <strong>63,036g</strong></p>
@@ -415,6 +432,7 @@
   <div class="section">
     <h2 class="section-title"><span class="num">5</span> ML(머신러닝) 예측 비교</h2>
     <p>결과 화면에서 <strong>"ML 예측 비교"</strong> 버튼을 클릭하면 머신러닝 기반의 로스율 및 제조량을 함께 확인할 수 있습니다.</p>
+    <p>ML 예측값은 SAP 예측값 <strong>바로 아래에 인라인</strong>으로 표시되어, 가로 스크롤 없이 한 화면에서 두 예측값을 동시에 비교할 수 있습니다. (ML 값은 <span style="color:#7c4dff;font-weight:700;">보라색</span>으로 구분 표시)</p>
 
     <h3>5-1. ML 예측 방식</h3>
     <p>과거 전체 SAP 실적 데이터 중 이상치를 제거한 <strong>42,408건</strong>을 <strong>Gradient Boosting</strong> 머신러닝 알고리즘으로 학습하여, 벌크코드별 + 제조량 구간별 예측 로스율을 산출합니다.</p>
@@ -544,9 +562,11 @@
         <tr><td><strong>벌크 코드/명</strong></td><td class="left">해당 성형물에 사용되는 벌크 정보</td></tr>
         <tr><td><strong>투입량(g)</strong></td><td class="left">BOM 기준 성형물 1개당 벌크 투입량 (소수점 셋째자리까지 표시)</td></tr>
         <tr><td><strong>필요 수량(ea)</strong></td><td class="left">완제품 발주 수량 기준 성형물 필요 수량</td></tr>
-        <tr><td><strong>이론 필요량(g)</strong></td><td class="left">필요 수량 × 투입량 (로스 미반영)</td></tr>
-        <tr><td><strong>평균 로스율</strong></td><td class="left">SAP 실적 기반 최근 5건 가중평균 로스율 (소수점 둘째자리까지 표시)</td></tr>
-        <tr><td><strong>최적 제조량(g)</strong></td><td class="left">이론 필요량에 로스율을 반영한 최종 제조 권장량</td></tr>
+        <tr><td><strong>가용 재고(ea)</strong></td><td class="left">현재 보유 중인 성형물 재고 (동일 홋수 내 2-code 다수면 합산)</td></tr>
+        <tr><td><strong>최종 수량(ea)</strong></td><td class="left">필요 수량 − 가용 재고 (실제 제조가 필요한 성형물 수량)</td></tr>
+        <tr><td><strong>이론 필요량(g)</strong></td><td class="left">최종 수량 × 투입량 (로스 미반영)</td></tr>
+        <tr><td><strong>평균 로스율</strong></td><td class="left">SAP 실적 기반 최근 5건 가중평균 로스율 (소수점 둘째자리까지 표시). ML 예측값이 보라색으로 인라인 표시됨</td></tr>
+        <tr><td><strong>최적 제조량(g)</strong></td><td class="left">이론 필요량에 로스율을 반영한 최종 제조 권장량. ML 기반 제조량이 보라색으로 인라인 표시됨</td></tr>
         <tr><td><strong>신뢰도</strong></td><td class="left">등급 배지(높음/보통/낮음/매우 낮음) + 점수(0~100). 마우스 오버 시 표본수·편차·최신성 상세 확인</td></tr>
       </tbody>
     </table>

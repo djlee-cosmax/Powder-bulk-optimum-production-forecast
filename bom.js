@@ -1,17 +1,6 @@
 // ============ ML 예측 데이터 (ml_predictions.js에서 로드) ============
 var mlPredictions = (typeof ML_PREDICTIONS !== 'undefined') ? ML_PREDICTIONS : null;
 
-// ============ 탭 전환 ============
-function switchTab(tabName) {
-  document.querySelectorAll('.tab-btn').forEach(function(btn) {
-    btn.classList.toggle('active', btn.textContent.indexOf('예측') !== -1);
-  });
-  document.querySelectorAll('.tab-content').forEach(function(el) {
-    el.classList.remove('active');
-  });
-  document.getElementById('tab-' + tabName).classList.add('active');
-}
-
 // ============ BOM 파일 업로드 ============
 var bomFileName = '';
 document.getElementById('bomFile').addEventListener('change', function(e) {
@@ -1218,50 +1207,3 @@ function renderBomCalcResults(results) {
   popup.document.close();
 }
 
-// ============ 예측 탭으로 보내기 ============
-function sendToPredictTab() {
-  var results = window._bomCalcResults;
-  if (!results || results.length === 0) return;
-
-  // 성형물별로 그룹핑 (같은 성형물에 여러 벌크가 있을 수 있음)
-  var moldMap = {};
-  for (var i = 0; i < results.length; i++) {
-    var r = results[i];
-    if (!moldMap[r.moldCode]) {
-      moldMap[r.moldCode] = Math.round(r.moldNeedQty);
-    }
-  }
-
-  // 예측 탭의 입력행 세팅
-  var container = document.getElementById('inputRows');
-  container.innerHTML = '';
-
-  var codes = Object.keys(moldMap);
-  for (var i = 0; i < codes.length; i++) {
-    var row = document.createElement('div');
-    row.className = 'input-row';
-    row.dataset.index = i;
-    row.innerHTML =
-      '<div class="input-group autocomplete-wrap">' +
-        '<label>성형물 코드</label>' +
-        '<input type="text" class="mold-code-input" value="' + codes[i] + '" autocomplete="off">' +
-        '<div class="autocomplete-list"></div>' +
-      '</div>' +
-      '<div class="input-group">' +
-        '<label>성형 지시 수량</label>' +
-        '<input type="text" class="order-qty-input" value="' + moldMap[codes[i]].toLocaleString() + '">' +
-      '</div>' +
-      '<button class="remove-row-btn" onclick="removeRow(this)" title="삭제">✕</button>';
-    container.appendChild(row);
-    row.querySelector('.order-qty-input').addEventListener('input', formatQtyInput);
-    setupAutocomplete(row.querySelector('.mold-code-input'));
-  }
-
-  // 예측 탭으로 전환
-  switchTab('predict');
-
-  // SAP 실적 데이터 있으면 자동 예측 실행
-  if (typeof sapCount !== 'undefined' && sapCount > 0) {
-    document.getElementById('predictBtn').click();
-  }
-}
