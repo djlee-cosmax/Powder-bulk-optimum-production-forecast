@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>로그인 — 파우더 벌크 제조량 예측 프로그램</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Malgun Gothic', sans-serif;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #222;
+    }
+    .login-card {
+      background: #fff;
+      padding: 56px 60px 44px;
+      border-radius: 14px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+      width: 580px;
+    }
+    .brand {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .brand .line { width: 56px; height: 4px; background: #c8102e; margin: 0 auto 16px; }
+    .brand h1 { font-size: 22px; font-weight: 800; color: #1a1a1a; margin-bottom: 6px; }
+    .brand .sub { font-size: 14px; color: #888; }
+
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+      display: block; font-size: 14px; font-weight: 600;
+      color: #555; margin-bottom: 7px;
+    }
+    .form-group input {
+      width: 100%; padding: 13px 15px;
+      border: 1px solid #ddd; border-radius: 7px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+    .form-group input:focus {
+      outline: none; border-color: #c8102e;
+      box-shadow: 0 0 0 3px rgba(200,16,46,0.1);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
+      font-family: inherit;
+    }
+    .login-btn:hover { background: #c8102e; }
+    .login-btn:disabled { background: #999; cursor: not-allowed; }
+
+    .error {
+      background: #fff5f5;
+      border: 1px solid #fecaca;
+      color: #c8102e;
+      padding: 11px 14px;
+      border-radius: 7px;
+      font-size: 14px;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .error.show { display: block; }
+
+    .footer-info {
+      text-align: center;
+      margin-top: 22px;
+      font-size: 13px;
+      color: #999;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="brand">
+      <div class="line"></div>
+      <h1>파우더 벌크 제조량 예측</h1>
+      <div class="sub">COSMAX 생산3팀 · 생산운영팀</div>
+    </div>
+
+    <div id="errorBox" class="error"></div>
+
+    <form id="loginForm" autocomplete="on">
+      <div class="form-group">
+        <label for="userId">ID</label>
+        <input type="text" id="userId" name="userId" autocomplete="username" autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">비밀번호</label>
+        <input type="password" id="password" name="password" autocomplete="current-password">
+      </div>
+      <button type="submit" class="login-btn" id="loginBtn">로그인</button>
+    </form>
+
+    <div class="footer-info">
+      비밀번호를 잊으셨거나 ID 등록이 필요하면 관리자에게 문의하세요.
+    </div>
+  </div>
+
+  <script src="users.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    (function () {
+      // 이미 로그인되어 있으면 메인으로
+      var user = Auth.getCurrentUser();
+      if (user) {
+        var params = new URLSearchParams(location.search);
+        var next = params.get('next') || 'index.html';
+        location.replace(next);
+        return;
+      }
+
+      var form = document.getElementById('loginForm');
+      var errorBox = document.getElementById('errorBox');
+      var btn = document.getElementById('loginBtn');
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        errorBox.classList.remove('show');
+        btn.disabled = true;
+        btn.textContent = '로그인 중...';
+
+        var userId = document.getElementById('userId').value;
+        var password = document.getElementById('password').value;
+
+        var result = await Auth.login(userId, password);
+
+        if (result.ok) {
+          var params = new URLSearchParams(location.search);
+          var next = params.get('next') || 'index.html';
+          location.replace(next);
+        } else {
+          errorBox.textContent = result.error;
+          errorBox.classList.add('show');
+          btn.disabled = false;
+          btn.textContent = '로그인';
+          document.getElementById('password').focus();
+          document.getElementById('password').select();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

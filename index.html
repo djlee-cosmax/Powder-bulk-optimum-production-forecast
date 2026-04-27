@@ -5,8 +5,90 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>파우더 벌크 최적 제조량 예측</title>
   <link rel="stylesheet" href="style.css">
+
+  <!-- 인증 체크: 미로그인 시 다른 리소스 로드 전에 즉시 리다이렉트 -->
+  <script src="users.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    if (!Auth.requireAuth()) {
+      // requireAuth 내부에서 location.replace 호출됨
+      throw new Error('redirecting to login');
+    }
+  </script>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    .header-right {
+      display: flex; align-items: center; gap: 10px;
+      margin-left: auto;
+      font-size: 15px; color: #333;
+    }
+    .header-right .user-greet { font-weight: 700; color: #1a1a1a; }
+    .header-right .admin-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      background: #c8102e;
+      color: #fff;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .header-right .header-btn {
+      padding: 7px 14px; border: 1px solid #ccc;
+      background: #fff; color: #444; border-radius: 6px;
+      font-size: 14px; cursor: pointer; font-family: inherit;
+    }
+    .header-right .header-btn:hover { background: #f5f5f5; border-color: #c8102e; color: #c8102e; }
+
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .pwd-modal {
+      background: #fff; padding: 28px 30px;
+      border-radius: 10px; width: 360px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .pwd-modal h3 { font-size: 16px; margin-bottom: 4px; color: #1a1a1a; }
+    .pwd-modal .sub { font-size: 12px; color: #888; margin-bottom: 16px; }
+    .pwd-modal .field { margin-bottom: 12px; }
+    .pwd-modal label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+    .pwd-modal input {
+      width: 100%; padding: 9px 11px; border: 1px solid #ddd;
+      border-radius: 5px; font-size: 13px; font-family: inherit;
+      box-sizing: border-box;
+    }
+    .pwd-modal input:focus { outline: none; border-color: #c8102e; }
+    .pwd-modal .err {
+      background: #fff5f5; border: 1px solid #fecaca; color: #c8102e;
+      padding: 7px 10px; border-radius: 5px; font-size: 12px;
+      margin-bottom: 10px; display: none;
+    }
+    .pwd-modal .err.show { display: block; }
+    .pwd-modal .ok {
+      background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d;
+      padding: 7px 10px; border-radius: 5px; font-size: 12px;
+      margin-bottom: 10px; display: none;
+    }
+    .pwd-modal .ok.show { display: block; }
+    .pwd-modal .actions {
+      display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px;
+    }
+    .pwd-modal .btn {
+      padding: 8px 16px; border: none; border-radius: 5px;
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .pwd-modal .btn-primary { background: #1a1a1a; color: #fff; }
+    .pwd-modal .btn-primary:hover { background: #c8102e; }
+    .pwd-modal .btn-cancel { background: #e0e0e0; color: #333; }
+  </style>
 </head>
 <body>
 
@@ -19,7 +101,94 @@
         <div class="header-team">생산3팀 & 생산운영팀</div>
       </div>
     </div>
+    <div class="header-right">
+      <span id="adminBadge" class="admin-badge" style="display:none">관리자</span>
+      <span class="user-greet" id="userGreet"></span>
+      <button class="header-btn" onclick="openChangePwdModal()">비밀번호 변경</button>
+      <button class="header-btn" onclick="doLogout()">로그아웃</button>
+    </div>
   </div>
+
+  <!-- 비밀번호 변경 모달 -->
+  <div class="modal-overlay" id="pwdModal">
+    <div class="pwd-modal">
+      <h3>비밀번호 변경</h3>
+      <div class="sub">변경된 비밀번호는 이 PC에만 저장됩니다 (다른 PC에서는 별도 변경 필요)</div>
+      <div class="err" id="pwdErr"></div>
+      <div class="ok" id="pwdOk"></div>
+      <div class="field">
+        <label for="oldPwd">현재 비밀번호</label>
+        <input type="password" id="oldPwd" autocomplete="current-password">
+      </div>
+      <div class="field">
+        <label for="newPwd">새 비밀번호 (최소 6자)</label>
+        <input type="password" id="newPwd" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label for="newPwd2">새 비밀번호 확인</label>
+        <input type="password" id="newPwd2" autocomplete="new-password">
+      </div>
+      <div class="actions">
+        <button class="btn btn-cancel" onclick="closeChangePwdModal()">취소</button>
+        <button class="btn btn-primary" id="pwdSubmitBtn" onclick="submitChangePwd()">변경</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('userGreet').textContent = Auth.getDisplayName() + '님';
+    if (Auth.isAdmin()) {
+      document.getElementById('adminBadge').style.display = 'inline-block';
+    }
+
+    function doLogout() {
+      if (!confirm('로그아웃하시겠습니까?')) return;
+      Auth.logout();
+      location.replace('login.html');
+    }
+
+    function openChangePwdModal() {
+      document.getElementById('oldPwd').value = '';
+      document.getElementById('newPwd').value = '';
+      document.getElementById('newPwd2').value = '';
+      document.getElementById('pwdErr').classList.remove('show');
+      document.getElementById('pwdOk').classList.remove('show');
+      document.getElementById('pwdModal').classList.add('show');
+      setTimeout(function () { document.getElementById('oldPwd').focus(); }, 50);
+    }
+
+    function closeChangePwdModal() {
+      document.getElementById('pwdModal').classList.remove('show');
+    }
+
+    async function submitChangePwd() {
+      var oldPwd = document.getElementById('oldPwd').value;
+      var newPwd = document.getElementById('newPwd').value;
+      var newPwd2 = document.getElementById('newPwd2').value;
+      var errEl = document.getElementById('pwdErr');
+      var okEl = document.getElementById('pwdOk');
+      var btn = document.getElementById('pwdSubmitBtn');
+      errEl.classList.remove('show');
+      okEl.classList.remove('show');
+
+      if (newPwd !== newPwd2) {
+        errEl.textContent = '새 비밀번호 확인이 일치하지 않습니다.';
+        errEl.classList.add('show');
+        return;
+      }
+      btn.disabled = true; btn.textContent = '변경 중...';
+      var result = await Auth.changePassword(oldPwd, newPwd);
+      btn.disabled = false; btn.textContent = '변경';
+      if (result.ok) {
+        okEl.textContent = '비밀번호가 변경되었습니다.';
+        okEl.classList.add('show');
+        setTimeout(closeChangePwdModal, 1200);
+      } else {
+        errEl.textContent = result.error;
+        errEl.classList.add('show');
+      }
+    }
+  </script>
 
   <div class="content">
       <div class="bom-top-row">
