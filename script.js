@@ -60,9 +60,14 @@ function dbDelete(key) {
   });
 }
 
-// SAP 데이터 IndexedDB 저장
-function saveSapToCache(fileName) {
-  return dbPut('sap', { records: sapRecords, fileName: fileName, savedAt: new Date().toISOString() })
+// SAP 데이터 IndexedDB 저장 (serverVersion: 서버 manifest의 updated 값, 수동 업로드 시 null)
+function saveSapToCache(fileName, serverVersion) {
+  return dbPut('sap', {
+    records: sapRecords,
+    fileName: fileName,
+    savedAt: new Date().toISOString(),
+    serverVersion: serverVersion || null
+  })
     .then(function() { console.log('SAP 데이터 IndexedDB 저장 완료 (' + sapCount + '건)'); })
     .catch(function(e) { console.error('SAP 저장 실패:', e); });
 }
@@ -103,8 +108,13 @@ function loadSapFromCache() {
 }
 
 // 환입/폐기 데이터 캐시
-function saveReturnToCache(fileName) {
-  return dbPut('return', { index: returnIndex, fileName: fileName, savedAt: new Date().toISOString() })
+function saveReturnToCache(fileName, serverVersion) {
+  return dbPut('return', {
+    index: returnIndex,
+    fileName: fileName,
+    savedAt: new Date().toISOString(),
+    serverVersion: serverVersion || null
+  })
     .catch(function(e) { console.error('환입/폐기 저장 실패:', e); });
 }
 
@@ -394,16 +404,156 @@ function setupReturnUpload() {
 setupSapUpload();
 setupReturnUpload();
 
-// 페이지 로드 시 IndexedDB에서 자동 복원
-(function autoRestoreFromCache() {
-  Promise.all([loadSapFromCache(), loadReturnFromCache()]).then(function(results) {
-    var loaded = 0;
-    if (results[0]) loaded++;
-    if (results[1]) loaded++;
-    if (loaded > 0) {
-      checkShowReset();
-      console.log('[캐시 복원] ' + loaded + '개 데이터 자동 로드 완료');
+// ============ 서버 자동 동기화 ============
+// data/manifest.json 의 updated 와 캐시의 serverVersion 비교 → 다르면 서버에서 xlsx 다운
+
+function fetchManifest() {
+  return fetch('data/manifest.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function(r) {
+      if (!r.ok) return null;
+      return r.json();
+    })
+    .catch(function() { return null; });
+}
+
+function fetchAndParseSapFromServer(displayName, serverVersion) {
+  return fetch('data/standard_perf.xlsx?v=' + encodeURIComponent(serverVersion), { cache: 'no-store' })
+    .then(function(r) {
+      if (!r.ok) throw new Error('SAP xlsx 서버 응답 ' + r.status);
+      return r.arrayBuffer();
+    })
+    .then(function(buf) {
+      sapRecords = []; moldBulkMap = {}; moldNameIndex = {}; sapCount = 0;
+      var wb = XLSX.read(buf, { type: 'array' });
+      wb.SheetNames.forEach(function(sn) {
+        var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: '' });
+        rows.forEach(function(row) { processSapRow(row); });
+      });
+      return saveSapToCache(displayName, serverVersion);
+    });
+}
+
+function fetchAndParseReturnFromServer(displayName, serverVersion) {
+  return fetch('data/disposal.xlsx?v=' + encodeURIComponent(serverVersion), { cache: 'no-store' })
+    .then(function(r) {
+      if (!r.ok) throw new Error('폐기 xlsx 서버 응답 ' + r.status);
+      return r.arrayBuffer();
+    })
+    .then(function(buf) {
+      returnIndex = {}; returnCount = 0;
+      var wb = XLSX.read(buf, { type: 'array' });
+      wb.SheetNames.forEach(function(sn) {
+        var workTeamCode = '';
+        if (sn.indexOf('화성') !== -1) workTeamCode = '3002';
+        else if (sn.indexOf('평택') !== -1) workTeamCode = '7002';
+        var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: '' });
+        rows.forEach(function(row) { processReturnRow(row, workTeamCode); });
+      });
+      return saveReturnToCache(displayName, serverVersion);
+    });
+}
+
+function setSapStatusAuto(saved, serverVersion) {
+  var statusEl = document.getElementById('sapStatus');
+  if (!statusEl) return;
+  var name = (saved && saved.fileName) || 'standard_perf.xlsx';
+  statusEl.textContent = '[자동] ' + name + ' (' + sapCount.toLocaleString() + '건, 서버 ' + serverVersion + ')';
+  statusEl.classList.add('loaded');
+}
+
+function setReturnStatusAuto(saved, serverVersion) {
+  var statusEl = document.getElementById('returnStatus');
+  if (!statusEl) return;
+  var name = (saved && saved.fileName) || 'disposal.xlsx';
+  var parts = [returnCount.toLocaleString() + '건'];
+  var range = getReturnDateRange();
+  if (range) parts.push('기간: ' + range.min + ' ~ ' + range.max);
+  parts.push('서버 ' + serverVersion);
+  statusEl.textContent = '[자동] ' + name + ' (' + parts.join(', ') + ')';
+  statusEl.classList.add('loaded');
+}
+
+// 페이지 로드 → 서버 매니페스트 비교 후 자동 동기화
+(function autoSyncWithServer() {
+  var loadingEl = document.getElementById('loadingOverlay');
+  var loadingText = document.querySelector('.loading-text');
+
+  fetchManifest().then(function(manifest) {
+    if (!manifest) {
+      // 서버 manifest 없음 → 캐시만 복원 (오프라인/단독 실행 모드)
+      return Promise.all([loadSapFromCache(), loadReturnFromCache()]).then(function(results) {
+        if (results[0] || results[1]) checkShowReset();
+      });
     }
+
+    // SAP, 폐기 각각 처리
+    var stdMeta = manifest.standardPerf || {};
+    var dispMeta = manifest.disposal || {};
+
+    return Promise.all([dbGet('sap'), dbGet('return')]).then(function(caches) {
+      var sapCached = caches[0];
+      var retCached = caches[1];
+      var needSap = !sapCached || sapCached.serverVersion !== stdMeta.updated;
+      var needRet = !retCached || retCached.serverVersion !== dispMeta.updated;
+
+      var tasks = [];
+
+      // SAP
+      if (needSap && stdMeta.updated) {
+        if (loadingEl) loadingEl.style.display = 'flex';
+        if (loadingText) loadingText.textContent = '서버에서 최신 SAP 데이터 받는 중...';
+        tasks.push(
+          fetchAndParseSapFromServer(stdMeta.originalFilename || 'standard_perf.xlsx', stdMeta.updated)
+            .then(function() {
+              return dbGet('sap').then(function(s) { setSapStatusAuto(s, stdMeta.updated); });
+            })
+            .catch(function(e) {
+              console.error('SAP 서버 fetch 실패:', e);
+              return loadSapFromCache(); // fallback to cache
+            })
+        );
+      } else if (sapCached) {
+        tasks.push(loadSapFromCache().then(function() {
+          if (sapCached.serverVersion) setSapStatusAuto(sapCached, sapCached.serverVersion);
+        }));
+      }
+
+      // 폐기
+      if (needRet && dispMeta.updated) {
+        if (loadingEl) loadingEl.style.display = 'flex';
+        if (loadingText) loadingText.textContent = '서버에서 최신 폐기 데이터 받는 중...';
+        tasks.push(
+          fetchAndParseReturnFromServer(dispMeta.originalFilename || 'disposal.xlsx', dispMeta.updated)
+            .then(function() {
+              return dbGet('return').then(function(s) { setReturnStatusAuto(s, dispMeta.updated); });
+            })
+            .catch(function(e) {
+              console.error('폐기 서버 fetch 실패:', e);
+              return loadReturnFromCache();
+            })
+        );
+      } else if (retCached) {
+        tasks.push(loadReturnFromCache().then(function() {
+          if (retCached.serverVersion) setReturnStatusAuto(retCached, retCached.serverVersion);
+        }));
+      }
+
+      return Promise.all(tasks);
+    });
+  })
+  .then(function() {
+    var sapStatusEl = document.getElementById('sapStatus');
+    var retStatusEl = document.getElementById('returnStatus');
+    if ((sapStatusEl && sapStatusEl.classList.contains('loaded')) ||
+        (retStatusEl && retStatusEl.classList.contains('loaded'))) {
+      checkShowReset();
+    }
+    if (loadingEl) loadingEl.style.display = 'none';
+    console.log('[자동 동기화] 완료');
+  })
+  .catch(function(e) {
+    console.error('자동 동기화 실패:', e);
+    if (loadingEl) loadingEl.style.display = 'none';
   });
 })();
 
