@@ -580,6 +580,22 @@ function calcBomNeeds() {
   var _parentStack = [];
   var _fertCode = null;
 
+  // 사전 패스: 2자 성형물 자식이 있는 1자 반제품 식별
+  // (자식 2자가 있으면 그쪽이 mold layer이므로 1자 자체 재고는 추적하지 않음 — 단위 불일치 방지)
+  var oneCodeHasMold = {};
+  var _pStackPre = [];
+  for (var pi = 0; pi < parsedBomData.length; pi++) {
+    var pd = parsedBomData[pi];
+    _pStackPre.length = pd.lev + 1;
+    _pStackPre[pd.lev] = pd;
+    if (pd.code.charAt(0) === '2' && pd.mtype === 'HAL1') {
+      var parPre = pd.lev > 0 ? _pStackPre[pd.lev - 1] : null;
+      if (parPre && parPre.code.charAt(0) === '1') {
+        oneCodeHasMold[parPre.code] = true;
+      }
+    }
+  }
+
   for (var i = 0; i < parsedBomData.length; i++) {
     var d = parsedBomData[i];
     _parentStack.length = d.lev + 1;
@@ -608,6 +624,17 @@ function calcBomNeeds() {
       shadeGroups[groupKey].totalAvailable += (d.available || 0);
       shadeGroups[groupKey].moldCodes.push(d.code);
       moldToShadeKey[_fertCode + '_' + d.code] = groupKey;
+    }
+
+    // 1자 반제품 (2자 성형물 자식이 없는 경우만 자체 가용재고 추적: 9→1→3 케이스)
+    if (d.code.charAt(0) === '1' && !oneCodeHasMold[d.code]) {
+      var groupKey1 = _fertCode + '_' + d.code;
+      if (!shadeGroups[groupKey1]) {
+        shadeGroups[groupKey1] = { totalAvailable: 0, moldCodes: [] };
+      }
+      shadeGroups[groupKey1].totalAvailable += (d.available || 0);
+      shadeGroups[groupKey1].moldCodes.push(d.code);
+      moldToShadeKey[_fertCode + '_' + d.code] = groupKey1;
     }
   }
 
@@ -647,7 +674,7 @@ function calcBomNeeds() {
     var pseudoMold = currentMold || currentMidLevel;
     if (d.code.charAt(0) === '3' && d.mtype === 'HAL2' && pseudoMold) {
       var moldNeedQtyOriginal = currentFert.orderQty * pseudoMold.inputQty;
-      // 성형물 가용재고 차감 (홋수별 합산) — 2자 mold일 때만 매칭, 1자 fallback은 0
+      // 성형물/반제품 가용재고 차감 (홋수별 합산) — 9→1→3 케이스는 1자 반제품 자체 재고 사용
       var shadeKey = moldToShadeKey[currentFert.code + '_' + pseudoMold.code];
       var shadeAvailable = (shadeKey && shadeGroups[shadeKey]) ? shadeGroups[shadeKey].totalAvailable : 0;
       var moldNeedQty = shadeAvailable > 0 ? Math.max(0, moldNeedQtyOriginal - shadeAvailable) : moldNeedQtyOriginal;
