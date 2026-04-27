@@ -44,8 +44,21 @@ echo "데이터 업데이트 완료 ($DATE)"
 echo "  표준대비실적: $STD_NAME → standard_perf.xlsx"
 echo "  폐기데이터:   $DISP_NAME → disposal.xlsx"
 echo ""
+
+# ML 재학습 자동 실행
+echo "ML 재학습 시작..."
+if python3 "$SCRIPT_DIR/retrain.py"; then
+    echo "ML 재학습 완료"
+else
+    echo ""
+    echo "[경고] ML 재학습 실패. 수동으로 재시도하세요:"
+    echo "  cd $SCRIPT_DIR && python3 retrain.py"
+    exit 1
+fi
+
+echo ""
 echo "다음 단계 (깃 배포):"
 echo "  cd $SCRIPT_DIR"
-echo "  git add data/"
+echo "  git add data/ ml_predictions.js ml_predictions.json ml_mappings.json"
 echo "  git commit -m \"데이터 업데이트 $DATE\""
 echo "  git push"
