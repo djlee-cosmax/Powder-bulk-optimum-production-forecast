@@ -55,9 +55,11 @@ If Not fso.FileExists(tempPath) Then
 End If
 
 Dim codes()
-ReDim codes(4)
+ReDim codes(0)
 Dim orderQtys()
-ReDim orderQtys(4)
+ReDim orderQtys(0)
+Dim prodNames()
+ReDim prodNames(0)
 Dim codeCount
 codeCount = 0
 Dim i
@@ -70,11 +72,21 @@ Do While Not ts.AtEndOfStream
     If UBound(parts) >= 0 Then
         c = Trim(parts(0))
         If c <> "" Then
+            If codeCount > UBound(codes) Then
+                ReDim Preserve codes(codeCount)
+                ReDim Preserve orderQtys(codeCount)
+                ReDim Preserve prodNames(codeCount)
+            End If
             codes(codeCount) = c
             If UBound(parts) >= 1 Then
                 orderQtys(codeCount) = Trim(parts(1))
             Else
                 orderQtys(codeCount) = ""
+            End If
+            If UBound(parts) >= 2 Then
+                prodNames(codeCount) = Trim(parts(2))
+            Else
+                prodNames(codeCount) = ""
             End If
             codeCount = codeCount + 1
         End If
@@ -109,6 +121,9 @@ Dim confirmMsg
 confirmMsg = "아래 내용으로 BOM 조회를 실행합니다." & vbCrLf & vbCrLf
 For i = 0 To codeCount - 1
     confirmMsg = confirmMsg & "  " & (i + 1) & ". " & codes(i)
+    If prodNames(i) <> "" Then
+        confirmMsg = confirmMsg & "  " & prodNames(i)
+    End If
     If orderQtys(i) <> "" Then
         confirmMsg = confirmMsg & "  (발주: " & FormatQty(orderQtys(i)) & ")"
     End If
@@ -166,9 +181,23 @@ WScript.Sleep 500
 session.findById("wnd[0]/usr/btn%_S_MATNR_%_APP_%-VALU_PUSH").press
 WScript.Sleep 500
 
-' 코드 입력
+' 코드 입력 (다중입력 테이블 - 화면에 보이는 행 수만큼만 한 번에 입력 가능 → 페이지 스크롤)
+Dim tblId, tbl, visibleRows, pageStart, vIdx
+tblId = "wnd[1]/usr/tabsTAB_STRIP/tabpSIVA/ssubSCREEN_HEADER:SAPLALDB:3010/tblSAPLALDBSINGLE"
+Set tbl = session.findById(tblId)
+visibleRows = tbl.VisibleRowCount
+If visibleRows < 1 Then visibleRows = 12
+
 For i = 0 To codeCount - 1
-    session.findById("wnd[1]/usr/tabsTAB_STRIP/tabpSIVA/ssubSCREEN_HEADER:SAPLALDB:3010/tblSAPLALDBSINGLE/ctxtRSCSEL_255-SLOW_I[1," & i & "]").text = codes(i)
+    pageStart = (i \ visibleRows) * visibleRows
+    vIdx = i Mod visibleRows
+    If vIdx = 0 And pageStart > 0 Then
+        ' 다음 페이지로 스크롤
+        Set tbl = session.findById(tblId)
+        tbl.verticalScrollbar.position = pageStart
+        WScript.Sleep 150
+    End If
+    session.findById(tblId & "/ctxtRSCSEL_255-SLOW_I[1," & vIdx & "]").text = codes(i)
 Next
 
 ' 실행
@@ -230,7 +259,7 @@ If fso.FileExists(savePath) Then
         ts.WriteLine "##ORDER_QTY##"
         For i = 0 To codeCount - 1
             If orderQtys(i) <> "" Then
-                ts.WriteLine codes(i) & "|" & Replace(orderQtys(i), ",", "")
+                ts.WriteLine codes(i) & "|" & Replace(orderQtys(i), ",", "") & "|" & prodNames(i)
             End If
         Next
         ts.Close

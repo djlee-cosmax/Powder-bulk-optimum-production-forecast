@@ -46,7 +46,7 @@ function parseBomTxt(text) {
     var orderLines = text.substring(orderIdx).split('\n');
     for (var q = 1; q < orderLines.length; q++) {
       var parts = orderLines[q].trim().split('|');
-      if (parts.length === 2 && parts[0] && parts[1]) {
+      if (parts.length >= 2 && parts[0] && parts[1]) {
         prefilledOrderQtys[parts[0].trim()] = parts[1].trim();
       }
     }
