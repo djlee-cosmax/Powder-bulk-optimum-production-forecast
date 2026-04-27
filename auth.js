@@ -3,7 +3,7 @@
 
 (function () {
   var SESSION_KEY = 'auth_session';
-  var SESSION_HOURS = 24;
+  var SESSION_HOURS = 8;
   var LOCK_KEY = 'auth_lock';
   var LOCK_THRESHOLD = 5;
   var LOCK_DURATION_MS = 60 * 1000;
