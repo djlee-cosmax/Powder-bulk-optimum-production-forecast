@@ -8,7 +8,7 @@ import os
 
 # ============ 1. 데이터 로드 ============
 print("데이터 로드 중...")
-df = pd.read_excel("/mnt/c/Users/djlee/OneDrive - COSMAX/바탕 화면/표준 대비 실적 데이터_260420.xlsx", sheet_name="데이터")
+df = pd.read_excel("/home/djlee/cosmax/project2/data/standard_perf.xlsx", sheet_name="데이터")
 print(f"전체 행: {len(df):,}")
 
 # ============ 2. 전처리 ============
