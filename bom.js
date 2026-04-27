@@ -615,6 +615,7 @@ function calcBomNeeds() {
   var results = [];
   var currentFert = null;
   var currentMold = null;
+  var currentMidLevel = null; // 2자 성형물이 없을 때 fallback으로 쓰일 1자 반제품
 
   for (var i = 0; i < parsedBomData.length; i++) {
     var d = parsedBomData[i];
@@ -622,23 +623,32 @@ function calcBomNeeds() {
     if (d.lev === 0 && orderMap[d.code]) {
       currentFert = { code: d.code, name: d.name, orderQty: orderMap[d.code] };
       currentMold = null;
+      currentMidLevel = null;
     } else if (d.lev === 0) {
       currentFert = null;
       currentMold = null;
+      currentMidLevel = null;
     }
 
     if (!currentFert) continue;
+
+    // 1자 반제품 (성형물 fallback): 새 반제품 서브트리 진입 시 이전 형제 서브트리의 성형물 캐리오버 방지
+    if (d.code.charAt(0) === '1') {
+      currentMidLevel = { code: d.code, name: d.name, inputQty: d.inputQty };
+      currentMold = null;
+    }
 
     // 성형물 (HAL1, 2코드) — Lev 1 또는 Lev 2
     if (d.code.charAt(0) === '2' && d.mtype === 'HAL1') {
       currentMold = { code: d.code, name: d.name, inputQty: d.inputQty };
     }
 
-    // 벌크 (HAL2, 3코드)
-    if (d.code.charAt(0) === '3' && d.mtype === 'HAL2' && currentMold) {
-      var moldNeedQtyOriginal = currentFert.orderQty * currentMold.inputQty;
-      // 성형물 가용재고 차감 (홋수별 합산)
-      var shadeKey = moldToShadeKey[currentFert.code + '_' + currentMold.code];
+    // 벌크 (HAL2, 3코드) — 2자 성형물 우선, 없으면 1자 반제품을 mold 대용으로 사용
+    var pseudoMold = currentMold || currentMidLevel;
+    if (d.code.charAt(0) === '3' && d.mtype === 'HAL2' && pseudoMold) {
+      var moldNeedQtyOriginal = currentFert.orderQty * pseudoMold.inputQty;
+      // 성형물 가용재고 차감 (홋수별 합산) — 2자 mold일 때만 매칭, 1자 fallback은 0
+      var shadeKey = moldToShadeKey[currentFert.code + '_' + pseudoMold.code];
       var shadeAvailable = (shadeKey && shadeGroups[shadeKey]) ? shadeGroups[shadeKey].totalAvailable : 0;
       var moldNeedQty = shadeAvailable > 0 ? Math.max(0, moldNeedQtyOriginal - shadeAvailable) : moldNeedQtyOriginal;
       var bulkTheoryNeed = moldNeedQty * d.inputQty;
@@ -653,8 +663,8 @@ function calcBomNeeds() {
       var validHistoryCount = 0;
       var stdDev = 0;
       var recencyDays = null;
-      if (typeof moldBulkMap !== 'undefined' && moldBulkMap[currentMold.code]) {
-        var predicted = predictOne(currentMold.code, Math.round(moldNeedQty));
+      if (typeof moldBulkMap !== 'undefined' && moldBulkMap[pseudoMold.code]) {
+        var predicted = predictOne(pseudoMold.code, Math.round(moldNeedQty));
         for (var p = 0; p < predicted.length; p++) {
           if (!predicted[p].error && predicted[p].bulkCode === d.code) {
             avgLossRate = predicted[p].avgLossRate;
@@ -670,8 +680,8 @@ function calcBomNeeds() {
           }
         }
         // 실적 이력 데이터 수집
-        if (moldBulkMap[currentMold.code][d.code]) {
-          var recs = moldBulkMap[currentMold.code][d.code].records;
+        if (moldBulkMap[pseudoMold.code][d.code]) {
+          var recs = moldBulkMap[pseudoMold.code][d.code].records;
           for (var ri = 0; ri < recs.length; ri++) {
             var rec = recs[ri];
             // 환입/폐기 정보 확인
@@ -717,8 +727,8 @@ function calcBomNeeds() {
         fertCode: currentFert.code,
         fertName: currentFert.name,
         fertOrderQty: currentFert.orderQty,
-        moldCode: currentMold.code,
-        moldName: currentMold.name,
+        moldCode: pseudoMold.code,
+        moldName: pseudoMold.name,
         moldNeedQty: moldNeedQty,
         moldNeedQtyOriginal: moldNeedQtyOriginal,
         shadeAvailable: shadeAvailable,
