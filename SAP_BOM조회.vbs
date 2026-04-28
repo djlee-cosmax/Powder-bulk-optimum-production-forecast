@@ -276,27 +276,6 @@ If connection Is Nothing Then
 End If
 Set session = connection.Children(0)
 
-' 진단: 매칭된 시스템 정보를 사용자에게 확인 (잘못 잡혔으면 취소 가능)
-Dim selDesc, selSys, allList
-selDesc = connection.Description
-selSys = ""
-On Error Resume Next
-selSys = session.Info.SystemName
-Err.Clear
-On Error GoTo 0
-allList = ""
-For Each conn In application.Children
-    allList = allList & "  - " & conn.Description & " [" & GetSystemName(conn) & "]" & vbCrLf
-Next
-If MsgBox("선택된 SAP 시스템:" & vbCrLf & _
-    "  " & selDesc & " [" & selSys & "]" & vbCrLf & vbCrLf & _
-    "전체 로그인 목록:" & vbCrLf & allList & vbCrLf & _
-    "이 시스템에서 BOM 조회를 진행할까요?" & vbCrLf & _
-    "(APO/BW 등 잘못된 시스템이 잡혔으면 [아니요]를 누르세요.)", _
-    vbYesNo + vbQuestion, "ERP 시스템 확인") = vbNo Then
-    WScript.Quit
-End If
-
 If IsObject(WScript) Then
     WScript.ConnectObject session, "on"
     WScript.ConnectObject application, "on"
