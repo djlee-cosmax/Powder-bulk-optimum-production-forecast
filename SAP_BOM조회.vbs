@@ -147,18 +147,47 @@ Set application = SapGuiAuto.GetScriptingEngine
 On Error GoTo 0
 
 ' ERP connection 찾기 (APO·BW 등 다른 시스템 동시 로그인 대응)
-' SAP Logon에서 로그인 순서에 따라 Children(0)이 달라지므로 Description으로 명시적 매칭
-Dim conn
+' SAP Logon에서 로그인 순서에 따라 Children(0)이 달라지므로 단계적으로 매칭
+Dim conn, descUp
 Set connection = Nothing
+
+' 1차: Description에 "ERP" 포함 (예: "AWS-ERP PRD")
 For Each conn In application.Children
-    If InStr(UCase(conn.Description), "ERP") > 0 Then
+    descUp = UCase(conn.Description)
+    If InStr(descUp, "ERP") > 0 Then
         Set connection = conn
         Exit For
     End If
 Next
+
+' 2차: APO·BW·SCM·CRM이 아닌 connection (이름에 ERP가 없는 환경 대응)
 If connection Is Nothing Then
-    MsgBox "SAP ERP에 먼저 로그인해 주세요." & vbCrLf & _
-        "(현재 로그인된 SAP 시스템 중 ERP가 없습니다.)", vbCritical, "ERP 미연결"
+    For Each conn In application.Children
+        descUp = UCase(conn.Description)
+        If InStr(descUp, "APO") = 0 And InStr(descUp, "BW") = 0 _
+            And InStr(descUp, "SCM") = 0 And InStr(descUp, "CRM") = 0 Then
+            Set connection = conn
+            Exit For
+        End If
+    Next
+End If
+
+' 3차: connection이 1개뿐이면 그것 사용 (단일 시스템 환경)
+If connection Is Nothing And application.Children.Count = 1 Then
+    Set connection = application.Children(0)
+End If
+
+If connection Is Nothing Then
+    Dim debugList
+    debugList = ""
+    For Each conn In application.Children
+        debugList = debugList & "  - " & conn.Description & vbCrLf
+    Next
+    MsgBox "SAP ERP를 찾지 못했습니다." & vbCrLf & vbCrLf & _
+        "현재 로그인된 SAP 시스템 목록:" & vbCrLf & debugList & vbCrLf & _
+        "ERP 시스템에 로그인 후 다시 실행해 주세요." & vbCrLf & _
+        "(이 메시지를 캡처해서 관리자에게 보내면 매칭 규칙을 보강할 수 있습니다.)", _
+        vbCritical, "ERP 미연결"
     WScript.Quit
 End If
 Set session = connection.Children(0)
