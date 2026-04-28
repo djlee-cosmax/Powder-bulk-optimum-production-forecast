@@ -227,13 +227,20 @@ session.findById("wnd[0]/tbar[0]/okcd").text = "/nZSDR9030"
 session.findById("wnd[0]").sendVKey 0
 WScript.Sleep 1000
 
-' 변형 선택
-session.findById("wnd[0]").sendVKey 4
-WScript.Sleep 500
-session.findById("wnd[1]/usr/lbl[10,5]").setFocus
-session.findById("wnd[1]/usr/lbl[10,5]").caretPosition = 6
-session.findById("wnd[1]").sendVKey 2
-WScript.Sleep 500
+' 변형 선택 (좌표 매칭 대신 다이얼로그의 현재 강조 항목을 Enter로 선택)
+On Error Resume Next
+session.findById("wnd[0]").sendVKey 4   ' F4: 변형 가져오기
+WScript.Sleep 800
+
+' 변형 다이얼로그가 떴으면 현재 강조된 항목을 Enter로 선택
+Dim variantPopup
+Set variantPopup = session.findById("wnd[1]", False)
+If Not variantPopup Is Nothing Then
+    session.findById("wnd[1]").sendVKey 0   ' Enter: 현재 강조된 변형 선택
+    WScript.Sleep 600
+End If
+Err.Clear
+On Error GoTo 0
 
 ' 플랜트 선택
 session.findById("wnd[0]/usr/ctxtP_WERKS").setFocus
