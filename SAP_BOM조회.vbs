@@ -144,9 +144,24 @@ If Err.Number <> 0 Then
     WScript.Quit
 End If
 Set application = SapGuiAuto.GetScriptingEngine
-Set connection = application.Children(0)
-Set session = connection.Children(0)
 On Error GoTo 0
+
+' ERP connection 찾기 (APO·BW 등 다른 시스템 동시 로그인 대응)
+' SAP Logon에서 로그인 순서에 따라 Children(0)이 달라지므로 Description으로 명시적 매칭
+Dim conn
+Set connection = Nothing
+For Each conn In application.Children
+    If InStr(UCase(conn.Description), "ERP") > 0 Then
+        Set connection = conn
+        Exit For
+    End If
+Next
+If connection Is Nothing Then
+    MsgBox "SAP ERP에 먼저 로그인해 주세요." & vbCrLf & _
+        "(현재 로그인된 SAP 시스템 중 ERP가 없습니다.)", vbCritical, "ERP 미연결"
+    WScript.Quit
+End If
+Set session = connection.Children(0)
 
 If IsObject(WScript) Then
     WScript.ConnectObject session, "on"
