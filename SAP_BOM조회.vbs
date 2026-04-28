@@ -151,16 +151,40 @@ On Error GoTo 0
 Dim conn, descUp
 Set connection = Nothing
 
-' 1차: Description에 "ERP" 포함 (예: "AWS-ERP PRD")
+' 1차: Description에 "ERP" + "PRD" 둘 다 포함 (운영 시스템 우선)
 For Each conn In application.Children
     descUp = UCase(conn.Description)
-    If InStr(descUp, "ERP") > 0 Then
+    If InStr(descUp, "ERP") > 0 And InStr(descUp, "PRD") > 0 Then
         Set connection = conn
         Exit For
     End If
 Next
 
-' 2차: APO·BW·SCM·CRM이 아닌 connection (이름에 ERP가 없는 환경 대응)
+' 2차: PRD가 들어간 connection (이름에 ERP 키워드가 없는 환경 대응)
+If connection Is Nothing Then
+    For Each conn In application.Children
+        descUp = UCase(conn.Description)
+        If InStr(descUp, "PRD") > 0 _
+            And InStr(descUp, "APO") = 0 And InStr(descUp, "BW") = 0 _
+            And InStr(descUp, "SCM") = 0 And InStr(descUp, "CRM") = 0 Then
+            Set connection = conn
+            Exit For
+        End If
+    Next
+End If
+
+' 3차: Description에 "ERP" 포함 (DEV/QAS 등도 허용)
+If connection Is Nothing Then
+    For Each conn In application.Children
+        descUp = UCase(conn.Description)
+        If InStr(descUp, "ERP") > 0 Then
+            Set connection = conn
+            Exit For
+        End If
+    Next
+End If
+
+' 4차: APO·BW·SCM·CRM이 아닌 connection
 If connection Is Nothing Then
     For Each conn In application.Children
         descUp = UCase(conn.Description)
@@ -172,7 +196,7 @@ If connection Is Nothing Then
     Next
 End If
 
-' 3차: connection이 1개뿐이면 그것 사용 (단일 시스템 환경)
+' 5차: connection이 1개뿐이면 그것 사용 (단일 시스템 환경)
 If connection Is Nothing And application.Children.Count = 1 Then
     Set connection = application.Children(0)
 End If
