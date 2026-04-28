@@ -147,56 +147,88 @@ Set application = SapGuiAuto.GetScriptingEngine
 On Error GoTo 0
 
 ' ERP connection 찾기 (APO·BW 등 다른 시스템 동시 로그인 대응)
-' SAP Logon에서 로그인 순서에 따라 Children(0)이 달라지므로 단계적으로 매칭
-Dim conn, descUp
+' 매칭 전략: APO/BW/SCM/CRM 키워드를 가진 connection은 모든 단계에서 배제,
+'           session.Info.SystemName으로 ZSDR9030 존재 가능성을 추가 검증
+Dim conn, descUp, sess, sysName
 Set connection = Nothing
 
-' 1차: Description에 "ERP" + "PRD" 둘 다 포함 (운영 시스템 우선)
+Function IsExcludedConn(d)
+    IsExcludedConn = (InStr(d, "APO") > 0 Or InStr(d, "BW") > 0 _
+        Or InStr(d, "SCM") > 0 Or InStr(d, "CRM") > 0 Or InStr(d, "EWM") > 0 _
+        Or InStr(d, "GTS") > 0 Or InStr(d, "SRM") > 0)
+End Function
+
+Function GetSystemName(c)
+    On Error Resume Next
+    Dim s, r
+    r = ""
+    Set s = c.Children(0)
+    If Not s Is Nothing Then r = UCase(s.Info.SystemName)
+    Err.Clear
+    On Error GoTo 0
+    GetSystemName = r
+End Function
+
+' 1차: Description에 "ERP" + "PRD" 모두 포함, APO/BW/SCM/CRM 제외
 For Each conn In application.Children
     descUp = UCase(conn.Description)
-    If InStr(descUp, "ERP") > 0 And InStr(descUp, "PRD") > 0 Then
+    If Not IsExcludedConn(descUp) _
+        And InStr(descUp, "ERP") > 0 And InStr(descUp, "PRD") > 0 Then
         Set connection = conn
         Exit For
     End If
 Next
 
-' 2차: PRD가 들어간 connection (이름에 ERP 키워드가 없는 환경 대응)
+' 2차: SystemName이 알려진 ERP SID (P01/PRD/ERP 패턴), 제외 키워드 없음
 If connection Is Nothing Then
     For Each conn In application.Children
         descUp = UCase(conn.Description)
-        If InStr(descUp, "PRD") > 0 _
-            And InStr(descUp, "APO") = 0 And InStr(descUp, "BW") = 0 _
-            And InStr(descUp, "SCM") = 0 And InStr(descUp, "CRM") = 0 Then
+        If Not IsExcludedConn(descUp) Then
+            sysName = GetSystemName(conn)
+            If sysName <> "" And InStr(sysName, "APO") = 0 _
+                And InStr(sysName, "BW") = 0 And InStr(sysName, "SCM") = 0 _
+                And InStr(sysName, "CRM") = 0 Then
+                Set connection = conn
+                Exit For
+            End If
+        End If
+    Next
+End If
+
+' 3차: PRD 포함이면서 APO/BW/SCM/CRM 제외
+If connection Is Nothing Then
+    For Each conn In application.Children
+        descUp = UCase(conn.Description)
+        If Not IsExcludedConn(descUp) And InStr(descUp, "PRD") > 0 Then
             Set connection = conn
             Exit For
         End If
     Next
 End If
 
-' 3차: Description에 "ERP" 포함 (DEV/QAS 등도 허용)
+' 4차: ERP 포함이면서 APO/BW/SCM/CRM 제외 (DEV/QAS 등)
 If connection Is Nothing Then
     For Each conn In application.Children
         descUp = UCase(conn.Description)
-        If InStr(descUp, "ERP") > 0 Then
+        If Not IsExcludedConn(descUp) And InStr(descUp, "ERP") > 0 Then
             Set connection = conn
             Exit For
         End If
     Next
 End If
 
-' 4차: APO·BW·SCM·CRM이 아닌 connection
+' 5차: APO/BW/SCM/CRM이 아닌 connection 아무거나
 If connection Is Nothing Then
     For Each conn In application.Children
         descUp = UCase(conn.Description)
-        If InStr(descUp, "APO") = 0 And InStr(descUp, "BW") = 0 _
-            And InStr(descUp, "SCM") = 0 And InStr(descUp, "CRM") = 0 Then
+        If Not IsExcludedConn(descUp) Then
             Set connection = conn
             Exit For
         End If
     Next
 End If
 
-' 5차: connection이 1개뿐이면 그것 사용 (단일 시스템 환경)
+' 6차: connection이 1개뿐이면 그것 사용 (단일 시스템 환경)
 If connection Is Nothing And application.Children.Count = 1 Then
     Set connection = application.Children(0)
 End If
@@ -205,7 +237,7 @@ If connection Is Nothing Then
     Dim debugList
     debugList = ""
     For Each conn In application.Children
-        debugList = debugList & "  - " & conn.Description & vbCrLf
+        debugList = debugList & "  - " & conn.Description & " [" & GetSystemName(conn) & "]" & vbCrLf
     Next
     MsgBox "SAP ERP를 찾지 못했습니다." & vbCrLf & vbCrLf & _
         "현재 로그인된 SAP 시스템 목록:" & vbCrLf & debugList & vbCrLf & _
@@ -215,6 +247,27 @@ If connection Is Nothing Then
     WScript.Quit
 End If
 Set session = connection.Children(0)
+
+' 진단: 매칭된 시스템 정보를 사용자에게 확인 (잘못 잡혔으면 취소 가능)
+Dim selDesc, selSys, allList
+selDesc = connection.Description
+selSys = ""
+On Error Resume Next
+selSys = session.Info.SystemName
+Err.Clear
+On Error GoTo 0
+allList = ""
+For Each conn In application.Children
+    allList = allList & "  - " & conn.Description & " [" & GetSystemName(conn) & "]" & vbCrLf
+Next
+If MsgBox("선택된 SAP 시스템:" & vbCrLf & _
+    "  " & selDesc & " [" & selSys & "]" & vbCrLf & vbCrLf & _
+    "전체 로그인 목록:" & vbCrLf & allList & vbCrLf & _
+    "이 시스템에서 BOM 조회를 진행할까요?" & vbCrLf & _
+    "(APO/BW 등 잘못된 시스템이 잡혔으면 [아니요]를 누르세요.)", _
+    vbYesNo + vbQuestion, "ERP 시스템 확인") = vbNo Then
+    WScript.Quit
+End If
 
 If IsObject(WScript) Then
     WScript.ConnectObject session, "on"
