@@ -147,16 +147,10 @@ Set application = SapGuiAuto.GetScriptingEngine
 On Error GoTo 0
 
 ' ERP connection 찾기 (APO·BW 등 다른 시스템 동시 로그인 대응)
-' 매칭 전략: APO/BW/SCM/CRM 키워드를 가진 connection은 모든 단계에서 배제,
-'           session.Info.SystemName으로 ZSDR9030 존재 가능성을 추가 검증
+' 매칭 전략: Description 키워드 + SystemName 끝맺음 패턴 (CAP=APO, CEP=ERP)
+'           Cosmax 환경처럼 description이 비어 있어도 SID로 식별 가능하도록 보강
 Dim conn, descUp, sess, sysName
 Set connection = Nothing
-
-Function IsExcludedConn(d)
-    IsExcludedConn = (InStr(d, "APO") > 0 Or InStr(d, "BW") > 0 _
-        Or InStr(d, "SCM") > 0 Or InStr(d, "CRM") > 0 Or InStr(d, "EWM") > 0 _
-        Or InStr(d, "GTS") > 0 Or InStr(d, "SRM") > 0)
-End Function
 
 Function GetSystemName(c)
     On Error Resume Next
@@ -169,66 +163,100 @@ Function GetSystemName(c)
     GetSystemName = r
 End Function
 
-' 1차: Description에 "ERP" + "PRD" 모두 포함, APO/BW/SCM/CRM 제외
+' APO/BW/SCM/CRM 등 ERP가 아닌 시스템 판별
+Function IsExcludedSystem(d, s)
+    ' Description 키워드
+    If InStr(d, "APO") > 0 Or InStr(d, "BW") > 0 _
+        Or InStr(d, "SCM") > 0 Or InStr(d, "CRM") > 0 _
+        Or InStr(d, "EWM") > 0 Or InStr(d, "GTS") > 0 _
+        Or InStr(d, "SRM") > 0 Or InStr(d, "PI/PO") > 0 Then
+        IsExcludedSystem = True : Exit Function
+    End If
+    ' SystemName 끝맺음 패턴 — Cosmax 환경: CAP(=APO), CBW(=BW) 등
+    If Len(s) >= 2 Then
+        If Right(s, 2) = "AP" Or Right(s, 2) = "BW" _
+            Or Right(s, 2) = "BI" Then
+            IsExcludedSystem = True : Exit Function
+        End If
+    End If
+    If Len(s) >= 3 Then
+        If Right(s, 3) = "APO" Or Right(s, 3) = "SCM" _
+            Or Right(s, 3) = "CRM" Then
+            IsExcludedSystem = True : Exit Function
+        End If
+    End If
+    IsExcludedSystem = False
+End Function
+
+' ERP일 가능성이 높은 시스템 판별
+Function IsLikelyERP(d, s)
+    ' Description 강한 신호
+    If InStr(d, "ERP") > 0 Or InStr(d, "ECC") > 0 Then
+        IsLikelyERP = True : Exit Function
+    End If
+    ' SystemName 강한 신호
+    If InStr(s, "ERP") > 0 Or InStr(s, "ECC") > 0 _
+        Or InStr(s, "ECP") > 0 Then
+        IsLikelyERP = True : Exit Function
+    End If
+    ' SystemName 끝맺음 = "EP" — Cosmax 환경: CEP(=ERP)
+    If Len(s) >= 2 And Right(s, 2) = "EP" Then
+        IsLikelyERP = True : Exit Function
+    End If
+    IsLikelyERP = False
+End Function
+
+' 1차: 제외 대상 아니고 IsLikelyERP + Description에 PRD (운영 우선)
 For Each conn In application.Children
     descUp = UCase(conn.Description)
-    If Not IsExcludedConn(descUp) _
-        And InStr(descUp, "ERP") > 0 And InStr(descUp, "PRD") > 0 Then
+    sysName = GetSystemName(conn)
+    If Not IsExcludedSystem(descUp, sysName) _
+        And IsLikelyERP(descUp, sysName) _
+        And InStr(descUp, "PRD") > 0 Then
         Set connection = conn
         Exit For
     End If
 Next
 
-' 2차: SystemName이 알려진 ERP SID (P01/PRD/ERP 패턴), 제외 키워드 없음
+' 2차: 제외 대상 아니고 IsLikelyERP (PRD 키워드 없는 환경 대응)
 If connection Is Nothing Then
     For Each conn In application.Children
         descUp = UCase(conn.Description)
-        If Not IsExcludedConn(descUp) Then
-            sysName = GetSystemName(conn)
-            If sysName <> "" And InStr(sysName, "APO") = 0 _
-                And InStr(sysName, "BW") = 0 And InStr(sysName, "SCM") = 0 _
-                And InStr(sysName, "CRM") = 0 Then
-                Set connection = conn
-                Exit For
-            End If
-        End If
-    Next
-End If
-
-' 3차: PRD 포함이면서 APO/BW/SCM/CRM 제외
-If connection Is Nothing Then
-    For Each conn In application.Children
-        descUp = UCase(conn.Description)
-        If Not IsExcludedConn(descUp) And InStr(descUp, "PRD") > 0 Then
+        sysName = GetSystemName(conn)
+        If Not IsExcludedSystem(descUp, sysName) _
+            And IsLikelyERP(descUp, sysName) Then
             Set connection = conn
             Exit For
         End If
     Next
 End If
 
-' 4차: ERP 포함이면서 APO/BW/SCM/CRM 제외 (DEV/QAS 등)
+' 3차: 제외 대상 아니면서 Description에 PRD 포함
 If connection Is Nothing Then
     For Each conn In application.Children
         descUp = UCase(conn.Description)
-        If Not IsExcludedConn(descUp) And InStr(descUp, "ERP") > 0 Then
+        sysName = GetSystemName(conn)
+        If Not IsExcludedSystem(descUp, sysName) _
+            And InStr(descUp, "PRD") > 0 Then
             Set connection = conn
             Exit For
         End If
     Next
 End If
 
-' 5차: APO/BW/SCM/CRM이 아닌 connection 아무거나
+' 4차: 제외 대상이 아닌 connection
 If connection Is Nothing Then
     For Each conn In application.Children
         descUp = UCase(conn.Description)
-        If Not IsExcludedConn(descUp) Then
+        sysName = GetSystemName(conn)
+        If Not IsExcludedSystem(descUp, sysName) Then
             Set connection = conn
             Exit For
         End If
     Next
 End If
 
-' 6차: connection이 1개뿐이면 그것 사용 (단일 시스템 환경)
+' 5차: connection이 1개뿐이면 그것 사용 (단일 시스템 환경)
 If connection Is Nothing And application.Children.Count = 1 Then
     Set connection = application.Children(0)
 End If
