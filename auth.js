@@ -203,4 +203,21 @@
     getDisplayName: getDisplayName,
     isAdmin: isAdmin
   };
+
+  // 세션 만료 자동 감시 (1분마다 체크) — 페이지를 켜둔 채로 만료 시각 도래해도 자동 로그아웃
+  setInterval(function () {
+    var raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    try {
+      var s = JSON.parse(raw);
+      if (s.expires && s.expires < Date.now()) {
+        localStorage.removeItem(SESSION_KEY);
+        // 로그인 페이지가 아닌 경우에만 redirect
+        if (location.pathname.indexOf('login.html') === -1) {
+          alert('로그인이 만료되었습니다. 다시 로그인해 주세요.');
+          location.replace('login.html');
+        }
+      }
+    } catch (e) {}
+  }, 60 * 1000);
 })();
