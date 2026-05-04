@@ -223,333 +223,181 @@
     <div class="cover-line"></div>
     <div class="cover-dept">COSMAX 생산3팀 & 생산운영팀</div>
     <div class="cover-info">
-      <div>버전 2.0</div>
-      <div>2026년 4월</div>
+      <div>버전 2.2</div>
+      <div>2026년 5월</div>
     </div>
   </div>
 
   <!-- 목차 -->
   <div class="toc">
     <h2>목차</h2>
-    <div class="toc-item"><span><span class="toc-num">1</span><span class="toc-title">프로그램 개요</span></span></div>
-    <div class="toc-item"><span><span class="toc-num">2</span><span class="toc-title">필요 데이터 및 준비사항</span></span></div>
-    <div class="toc-item"><span><span class="toc-num">3</span><span class="toc-title">사용 방법 (Step by Step)</span></span></div>
-    <div class="toc-item"><span><span class="toc-num">4</span><span class="toc-title">예측 계산 방식</span></span></div>
-    <div class="toc-item"><span><span class="toc-num">5</span><span class="toc-title">ML(머신러닝) 예측 비교</span></span></div>
-    <div class="toc-item"><span><span class="toc-num">6</span><span class="toc-title">결과 화면 안내</span></span></div>
-    <div class="toc-item"><span><span class="toc-num">7</span><span class="toc-title">참고사항 및 주의점</span></span></div>
+    <div class="toc-item"><span><span class="toc-num">1</span><span class="toc-title">프로그램 소개</span></span></div>
+    <div class="toc-item"><span><span class="toc-num">2</span><span class="toc-title">로그인</span></span></div>
+    <div class="toc-item"><span><span class="toc-num">3</span><span class="toc-title">사용 준비 (BOM 데이터 받기)</span></span></div>
+    <div class="toc-item"><span><span class="toc-num">4</span><span class="toc-title">사용 방법 (Step by Step)</span></span></div>
+    <div class="toc-item"><span><span class="toc-num">5</span><span class="toc-title">결과 화면 보는 법</span></span></div>
+    <div class="toc-item"><span><span class="toc-num">6</span><span class="toc-title">결과 내보내기</span></span></div>
+    <div class="toc-item"><span><span class="toc-num">7</span><span class="toc-title">자주 묻는 질문</span></span></div>
   </div>
 
-  <!-- 1. 프로그램 개요 -->
+  <!-- 1. 프로그램 소개 -->
   <div class="section">
-    <h2 class="section-title"><span class="num">1</span> 프로그램 개요</h2>
-    <p>본 프로그램은 파우더 제품의 <strong>벌크 최적 제조량</strong>을 예측하기 위한 도구입니다.</p>
-    <p>완제품 BOM(Bill of Materials) 데이터와 SAP 실적 데이터를 기반으로, 각 벌크의 이론 필요량에 과거 로스율을 반영하여 실제로 제조해야 할 최적 수량을 산출합니다.</p>
-
-    <h3>주요 기능</h3>
-    <ul>
-      <li><strong>BOM 구조 분석</strong> — 완제품 → 성형물 → 벌크 구조를 트리 형태로 시각화</li>
-      <li><strong>벌크별 필요 제조량 계산</strong> — 발주 수량 입력 시 벌크별 최적 제조량 자동 산출</li>
-      <li><strong>로스율 기반 예측</strong> — SAP 실적 데이터 <strong>최근 5건의 가중평균</strong>으로 로스율 산출 (이상치 영향 감소)</li>
-      <li><strong>신뢰도 점수 표시</strong> — 표본수·편차·최신성 기반 0~100점 평가 및 등급 배지 (높음/보통/낮음/매우 낮음)</li>
-      <li><strong>ML(머신러닝) 예측 비교</strong> — 제조량 구간별 학습된 로스율과 비교 가능</li>
-      <li><strong>폐기 데이터 보정</strong> — 폐기된 벌크량을 차감하여 실제 사용량 기준으로 계산</li>
-      <li><strong>데이터 자동 저장</strong> — IndexedDB에 SAP·환입/폐기 데이터 저장, 페이지 재접속 시 자동 복원</li>
-      <li><strong>결과 내보내기</strong> — 엑셀(XLSX) 또는 CSV 파일로 다운로드 가능</li>
-    </ul>
-  </div>
-
-  <!-- 2. 필요 데이터 -->
-  <div class="section">
-    <h2 class="section-title"><span class="num">2</span> 필요 데이터 및 준비사항</h2>
-    <p>프로그램 사용을 위해 아래 3가지 데이터 파일이 필요합니다.</p>
-
-    <table>
-      <thead>
-        <tr>
-          <th style="width:30%">데이터</th>
-          <th style="width:15%">버튼 색상</th>
-          <th style="width:15%">필수 여부</th>
-          <th style="width:40%">설명</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>완제품 BOM 데이터</strong></td>
-          <td>보라색</td>
-          <td><strong>필수</strong></td>
-          <td class="left">SAP에서 추출한 BOM 데이터<br>(TXT 또는 CSV)</td>
-        </tr>
-        <tr>
-          <td><strong>표준 대비 실적 데이터</strong></td>
-          <td>파란색</td>
-          <td><strong>필수</strong></td>
-          <td class="left">SAP 표준소요량 대비 실제 투입량 이력<br>(CSV 또는 XLSX)</td>
-        </tr>
-        <tr>
-          <td><strong>벌크 폐기 데이터</strong></td>
-          <td>초록색</td>
-          <td>선택</td>
-          <td class="left">폐기 처리된 벌크 수량 데이터<br>(CSV 또는 XLSX)</td>
-        </tr>
-      </tbody>
-    </table>
+    <h2 class="section-title"><span class="num">1</span> 프로그램 소개</h2>
+    <p>완제품 발주 수량을 입력하면, SAP 실적 데이터를 분석하여 <strong>벌크별 최적 제조량</strong>을 자동으로 산출하는 프로그램입니다.</p>
 
     <div class="info-box">
-      <div class="label">참고</div>
-      <div>폐기 데이터가 없어도 예측은 가능합니다.<br>폐기 데이터를 함께 업로드하면 실제 사용량을 보정하여 더 정확한 로스율을 산출할 수 있습니다.</div>
-    </div>
-
-    <div class="info-box">
-      <div class="label">SAP BOM 컬럼 호환성</div>
-      <div>BOM 데이터 업로드 시 <strong>필수 컬럼(Lev, MTyp, 자재, 자재내역, 투입수량 또는 소요수량)</strong>을 자동 검증합니다.<br>부서별 SAP 레이아웃 차이로 "투입수량" 컬럼이 없는 경우 자동으로 <strong>"소요수량" 컬럼으로 대체</strong>하여 사용하므로, 다른 부서의 BOM 파일도 호환됩니다.<br>필수 컬럼이 누락된 경우 에러 메시지와 함께 업로드가 중단됩니다.</div>
-    </div>
-  </div>
-
-  <!-- 3. 사용 방법 -->
-  <div class="section">
-    <h2 class="section-title"><span class="num">3</span> 사용 방법 (Step by Step)</h2>
-
-    <div class="step-box">
-      <span class="step-num">1</span><span class="step-title">데이터 파일 업로드</span>
-      <div class="step-desc">아래 3가지 파일을 업로드합니다.<br>업로드 순서는 자유이며, 업로드 완료 시 파일명과 로드된 건수가 표시됩니다.</div>
-      <div class="step-desc">
-        <ul style="margin-top:6px">
-          <li>보라색 <strong>"완제품 BOM 데이터"</strong> — BOM 구조 표시 및 발주 수량 입력란 생성</li>
-          <li>파란색 <strong>"표준 대비 실적 데이터"</strong> — 로스율 계산에 사용</li>
-          <li>초록색 <strong>"벌크 폐기 데이터"</strong> (선택) — 투입량 보정에 활용</li>
+      <div class="label">이 프로그램으로 할 수 있는 일</div>
+      <div>
+        <ul style="margin:0 0 0 20px">
+          <li>완제품 발주 수량 → 벌크별 필요 제조량 즉시 계산</li>
+          <li>과거 로스율을 자동 반영하여 실제 필요한 양 산출</li>
+          <li>신뢰도 등급으로 예측 정확도 한눈에 확인</li>
+          <li>ML 예측값과 비교하여 교차 검증</li>
+          <li>결과를 엑셀 / CSV로 다운로드</li>
         </ul>
       </div>
     </div>
 
+    <h3>예측의 기본 원리</h3>
+    <p>BOM 기준으로 산출된 이론 필요량에 SAP 실적상의 <strong>최근 5건 평균 로스율</strong>을 반영하여 최적 제조량을 계산합니다. 폐기 데이터가 있는 경우 실제 사용량 기준으로 보정됩니다.</p>
+
+    <div class="formula">최적 제조량(g) = 이론 필요량 × (1 + 로스율 ÷ 100)</div>
+  </div>
+
+  <!-- 2. 로그인 -->
+  <div class="section">
+    <h2 class="section-title"><span class="num">2</span> 로그인</h2>
+    <p>프로그램 접속 시 가장 먼저 로그인 화면이 나타납니다. 관리자에게 발급받은 계정으로 로그인하면 됩니다.</p>
+
+    <div class="step-box">
+      <span class="step-num">1</span><span class="step-title">아이디 / 비밀번호 입력</span>
+      <div class="step-desc">발급받은 계정 정보를 입력하고 로그인 버튼을 누릅니다.</div>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">2</span><span class="step-title">메인 화면 진입</span>
+      <div class="step-desc">로그인 후 우측 상단에 사용자 이름이 표시됩니다. 관리자 권한이면 이름 옆에 <strong>[관리자]</strong> 뱃지가 붙습니다.</div>
+    </div>
+
+    <div class="info-box">
+      <div class="label">세션 자동 만료</div>
+      <div>로그인 후 <strong>8시간이 지나면 자동 로그아웃</strong>됩니다. 1분 간격으로 세션을 확인하므로, 화면을 켜둔 채 방치하더라도 8시간 경과 시 자동으로 로그인 화면으로 이동합니다. 다시 로그인 후 BOM 데이터를 재업로드하면 됩니다.</div>
+    </div>
+
+    <div class="info-box">
+      <div class="label">계정 발급 / 비밀번호 분실</div>
+      <div>신규 계정이 필요하거나 비밀번호를 잊은 경우 <strong>관리자에게 문의</strong>해 주세요.</div>
+    </div>
+  </div>
+
+  <!-- 3. 사용 준비 -->
+  <div class="section">
+    <h2 class="section-title"><span class="num">3</span> 사용 준비 (BOM 데이터 받기)</h2>
+    <p>매번 작업 시 사용자가 직접 준비해야 하는 데이터는 <strong>완제품 BOM 데이터 1개</strong>입니다.<br>표준대비실적 / 벌크폐기 데이터는 운영자가 갱신할 때마다 자동으로 받아오므로 사용자가 별도로 업로드할 필요가 없습니다.</p>
+
+    <h3>방법 1: SAP_BOM조회.vbs 사용 (권장)</h3>
+    <p>가장 빠른 방법입니다. 한 번에 여러 완제품의 BOM을 동시에 조회하여 엑셀 파일로 자동 저장됩니다.</p>
+
+    <div class="step-box">
+      <span class="step-num">1</span><span class="step-title">SAP 로그인</span>
+      <div class="step-desc">SAP GUI를 실행하고 ERP 시스템에 로그인합니다. APO 시스템에 동시 로그인되어 있어도 괜찮습니다 — 프로그램이 ERP 연결을 자동으로 식별합니다.</div>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">2</span><span class="step-title">SAP_BOM조회.vbs 실행</span>
+      <div class="step-desc">바탕화면의 SAP_BOM조회.vbs를 더블클릭하면 입력 폼이 나타납니다.</div>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">3</span><span class="step-title">완제품 정보 입력</span>
+      <div class="step-desc">엑셀에서 <strong>완제품 코드 / 완제품명 / 발주 수량</strong> 3개 열을 통째로 복사하고, 입력 폼 상단에 붙여넣은 뒤 <strong>"붙여넣은 데이터로 채우기"</strong> 버튼을 누르면 모든 행이 자동으로 채워집니다.</div>
+      <div class="step-desc" style="margin-top:6px">한 건씩 직접 입력해도 되며, <strong>+ 행 추가</strong> / <strong>x 삭제</strong> / <strong>Enter 다음 칸 이동</strong>이 지원됩니다.</div>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">4</span><span class="step-title">조회 실행 → 엑셀 자동 저장</span>
+      <div class="step-desc">조회가 완료되면 BOM 결과가 엑셀 파일로 자동 저장됩니다. 30개 이상 입력해도 SAP 다중입력 페이지가 자동 스크롤되어 한 번에 처리됩니다.</div>
+    </div>
+
+    <div class="info-box">
+      <div class="label">APO + ERP 동시 로그인 환경 자동 대응</div>
+      <div>업무 사유로 SAP APO와 ERP에 동시에 로그인되어 있어도 프로그램이 <strong>ERP 연결을 자동 식별</strong>합니다. DEV / QAS / PRD 시스템에 동시 로그인된 경우에는 <strong>운영(PRD)을 우선 선택</strong>합니다.</div>
+    </div>
+
+    <h3>방법 2: SAP에서 직접 추출</h3>
+    <p>VBS를 사용하지 않고 SAP에서 BOM 데이터를 TXT 또는 CSV로 직접 추출해도 됩니다. 다른 부서의 SAP 레이아웃 파일도 호환 가능합니다.</p>
+
+    <div class="info-box">
+      <div class="label">BOM 파일 필수 컬럼</div>
+      <div>BOM 파일에는 아래 컬럼이 반드시 포함되어 있어야 합니다.
+        <ul style="margin:6px 0 0 20px">
+          <li><strong>Lev</strong> — BOM 계층</li>
+          <li><strong>MTyp</strong> — 자재유형 (FERT, HAL1, HAL2 등)</li>
+          <li><strong>자재 / 자재내역</strong> — 자재 코드 및 명</li>
+          <li><strong>투입수량</strong> 또는 <strong>소요수량</strong> — 둘 중 하나가 있으면 됨</li>
+        </ul>
+        <div style="margin-top:6px;font-size:9pt;color:#666">※ 필수 컬럼이 누락된 경우 업로드 시 에러 메시지가 표시되며 진행이 중단됩니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 사용 방법 -->
+  <div class="section">
+    <h2 class="section-title"><span class="num">4</span> 사용 방법 (Step by Step)</h2>
+
+    <div class="step-box">
+      <span class="step-num">1</span><span class="step-title">BOM 데이터 업로드</span>
+      <div class="step-desc">화면의 보라색 <strong>"완제품 BOM 데이터"</strong> 버튼을 클릭하고 준비한 BOM 파일을 선택합니다. 업로드 즉시 완제품 목록과 발주 수량 입력란이 나타납니다.</div>
+      <div class="step-desc" style="margin-top:6px;color:#777;font-size:9pt">파란색 "표준 대비 실적 데이터", 초록색 "벌크 폐기 데이터" 버튼은 [자동] 표시가 되어 있습니다. 평소에는 손댈 필요 없으며, 자동으로 최신 서버 데이터가 적용됩니다.</div>
+    </div>
+
     <div class="step-box">
       <span class="step-num">2</span><span class="step-title">발주 수량 입력</span>
-      <div class="step-desc">BOM 데이터 업로드 후 나타나는 완제품 목록에 <strong>발주 수량</strong>을 입력합니다.<br><strong>SAP_BOM조회.vbs 실행 시 발주 수량을 미리 입력한 경우, 업로드만 하면 자동으로 수량이 반영됩니다.</strong><br>숫자만 입력하면 자동으로 콤마가 적용되며, Enter 키로 다음 항목으로 이동할 수 있습니다.</div>
+      <div class="step-desc">완제품 목록에 발주 수량을 입력합니다. 숫자 입력 시 자동으로 콤마가 적용되며, <strong>Enter 키로 다음 칸 이동</strong>이 가능합니다.</div>
+      <div class="step-desc" style="margin-top:6px"><strong>SAP_BOM조회.vbs로 발주 수량을 미리 입력했다면</strong>, 그 수량이 BOM 파일에 함께 들어 있어 업로드만으로 자동 반영됩니다.</div>
     </div>
 
     <div class="step-box">
       <span class="step-num">3</span><span class="step-title">벌크 필요량 계산</span>
-      <div class="step-desc"><strong>"벌크 필요량 계산"</strong> 버튼을 클릭하면 새 창에 벌크별 필요 제조량 결과가 표시됩니다.</div>
+      <div class="step-desc">화면의 <strong>"벌크 필요량 계산"</strong> 버튼을 클릭하면 새 창에 결과가 나타납니다.</div>
+    </div>
+
+    <div class="step-box">
+      <span class="step-num">4</span><span class="step-title">결과 확인 및 다운로드</span>
+      <div class="step-desc">결과를 검토한 뒤, 필요 시 엑셀 또는 CSV로 다운로드합니다. (자세한 결과 화면 사용법은 다음 장 참고)</div>
+    </div>
+
+    <div class="info-box">
+      <div class="label">성형물 가용재고 자동 차감</div>
+      <div>이미 보유 중인 성형물 재고는 자동으로 차감되어 <strong>실제 제조가 필요한 수량</strong>만 계산됩니다. 동일 홋수에 2-code(성형물)가 여러 개 매핑된 경우에는 모두 합산하여 차감합니다. 가용재고가 필요 수량보다 많으면 최종 수량은 0으로 처리됩니다 (벌크 제조 불필요).</div>
+    </div>
+
+    <div class="info-box">
+      <div class="label">2-code 성형물이 없는 BOM 구조</div>
+      <div>일부 품목은 BOM이 <strong>9자 완제품 → 1자 반제품 → 3자 벌크</strong> 구조로 2-code 성형물 단계가 없는 경우가 있습니다. 이 경우 자동으로 1자 반제품을 성형물 대용으로 사용하여 벌크 필요량을 계산하므로 사용자가 별도 조치할 필요가 없습니다.</div>
+    </div>
+
+    <div class="info-box">
+      <div class="label">초기화 버튼 두 가지</div>
+      <div>
+        <ul style="margin:0 0 0 20px">
+          <li><strong>"BOM만 초기화"</strong> — BOM 데이터만 비우고 자동 동기화된 실적/폐기 데이터는 유지. 다른 발주 건을 빠르게 다시 계산할 때 편리합니다.</li>
+          <li><strong>"전체 초기화"</strong> — 모든 캐시 데이터까지 삭제 후 새로고침. 데이터가 이상하게 보일 때 사용하면 서버에서 다시 받아옵니다.</li>
+        </ul>
+      </div>
     </div>
 
     <div class="highlight-box">
       <div class="label">중요</div>
-      <div><strong>"벌크 필요량 계산" 버튼을 누르기 전에</strong> 표준 대비 실적 데이터가 업로드되어 있어야 합니다.<br>실적 데이터가 없으면 로스율 계산이 불가하여 최적 제조량이 산출되지 않습니다.</div>
+      <div><strong>"벌크 필요량 계산" 버튼을 누르기 전에</strong> 표준 대비 실적 데이터가 로드되어 있어야 합니다. 평소에는 자동으로 동기화되므로 신경 쓸 필요 없으나, 처음 접속하거나 캐시를 초기화한 직후라면 잠시 기다린 후 진행해 주세요.</div>
     </div>
   </div>
 
-  <!-- 4. 예측 계산 방식 -->
+  <!-- 5. 결과 화면 -->
   <div class="section">
-    <h2 class="section-title"><span class="num">4</span> 예측 계산 방식</h2>
+    <h2 class="section-title"><span class="num">5</span> 결과 화면 보는 법</h2>
 
-    <h3>4-1. 성형물 필요 수량 산정 (가용재고 차감)</h3>
-    <p>완제품 발주 수량 기준으로 산출된 성형물 필요 수량에서, 현재 보유 중인 <strong>성형물 가용재고</strong>를 차감하여 실제 제조가 필요한 성형물 수량(최종 수량)을 산정합니다.</p>
-    <div class="formula">최종 수량(ea) = 필요 수량(ea) − 가용 재고(ea)</div>
-    <p>예시: 필요 수량 30,000ea − 가용 재고 5,000ea = <strong>최종 수량 25,000ea</strong></p>
-
-    <div class="info-box">
-      <div class="label">동일 홋수 내 2-code 다수 보유 시</div>
-      <div>같은 홋수(완제품) 아래에 2-code(성형물)가 2개 이상 매핑된 경우, 해당 홋수의 모든 2-code 가용재고를 <strong>합산</strong>하여 차감합니다.<br>예: 동일 홋수에 2-code A(재고 3,000ea)와 2-code B(재고 2,000ea)가 있으면 가용재고 5,000ea로 합산 처리.</div>
-    </div>
-
-    <p>가용재고가 필요 수량보다 많은 경우 최종 수량은 <strong>0</strong>으로 처리되어 벌크 제조가 불필요함을 나타냅니다.</p>
-
-    <h3>4-2. 이론 필요량 산출</h3>
-    <p>위에서 산정된 성형물 최종 수량을 기준으로 벌크 이론 필요량을 계산합니다.</p>
-    <div class="formula">이론 필요량(g) = 최종 수량(ea) × 벌크 투입량(g)</div>
-    <p>예시: 최종 수량 25,000ea × 벌크 투입량 1.9g = <strong>47,500g</strong></p>
-
-    <h3>4-3. 로스율 산출</h3>
-    <p>SAP 실적 데이터에서 해당 성형물-벌크 조합의 과거 이력을 조회하여 로스율을 계산합니다.</p>
-    <div class="formula">로스율(%) = (실제 투입량 - 표준소요량) ÷ 표준소요량 × 100</div>
-
-    <ul>
-      <li>과거 이력을 <strong>최신순으로 정렬</strong>한 후, 유효한 <strong>최근 5건</strong>의 로스율을 <strong>가중평균</strong>하여 채택합니다.<br>(최신 이력일수록 큰 가중치를 부여 — 예: 5건일 때 최신=5, 다음=4, ..., 가장 오래된=1)</li>
-      <li>표준소요량 3,000g 이하의 소량 건은 제외합니다. (소량 제조 시 로스율이 비정상적으로 높아지는 패턴이 있고, 현장에서 3kg 이하 잔량은 환입 없이 폐기하므로 폐기분이 투입량에 포함되어 로스율이 왜곡될 수 있기 때문)</li>
-      <li>표준 투입량은 과거 이력 중 <strong>가장 최신의 유효값</strong>을 사용합니다. (SAP BOM이 변경된 경우 최신 변경값을 즉시 반영)</li>
-      <li>폐기 데이터가 있으면 실제 투입량에서 폐기량을 차감하여 보정합니다.</li>
-      <li>유효한 이력이 없는 경우 로스율과 최적 제조량은 <strong>"-"</strong>으로 표시됩니다.</li>
-    </ul>
-
-    <div class="info-box">
-      <div class="label">최근 5건 가중평균을 사용하는 이유</div>
-      <div>단일 최근 이력만 사용하면 해당 1건이 이상값인 경우(특수 조건, 측정 오차 등) 예측이 크게 왜곡될 수 있습니다.<br>최근 5건의 가중평균을 사용하면 최신 현장 상황을 반영하면서도 이상치 1건의 영향을 줄일 수 있습니다.</div>
-    </div>
-
-    <h3>4-4. 신뢰도 점수</h3>
-    <p>각 벌크의 로스율 예측에 대해 <strong>0~100점</strong>의 신뢰도 점수를 함께 산출하여, 예측값을 얼마나 믿을 수 있는지 직관적으로 확인할 수 있게 합니다.</p>
-
-    <table>
-      <thead>
-        <tr>
-          <th style="width:25%">항목 (만점)</th>
-          <th style="width:35%">기준</th>
-          <th>점수</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td rowspan="3"><strong>표본 수 (40점)</strong></td><td>5건 이상</td><td>40점</td></tr>
-        <tr><td>3~4건</td><td>25점</td></tr>
-        <tr><td>1~2건</td><td>10점</td></tr>
-        <tr><td rowspan="3"><strong>편차 (40점)</strong></td><td>표준편차 3% 미만</td><td>40점</td></tr>
-        <tr><td>표준편차 7% 미만</td><td>25점</td></tr>
-        <tr><td>표준편차 15% 미만</td><td>10점</td></tr>
-        <tr><td rowspan="3"><strong>최신성 (20점)</strong></td><td>최신 이력 30일 이내</td><td>20점</td></tr>
-        <tr><td>최신 이력 90일 이내</td><td>10점</td></tr>
-        <tr><td>최신 이력 180일 이내</td><td>5점</td></tr>
-      </tbody>
-    </table>
-
-    <h4 style="margin:14px 0 6px;padding-left:10px;border-left:3px solid #c8102e;font-size:10pt;font-weight:700;">신뢰도 등급</h4>
-    <table>
-      <thead>
-        <tr>
-          <th>등급</th>
-          <th>점수 범위</th>
-          <th>의미</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td><strong>높음</strong></td><td>80점 이상</td><td class="left">그대로 활용 가능</td></tr>
-        <tr><td><strong>보통</strong></td><td>50~79점</td><td class="left">활용 가능하나 주의</td></tr>
-        <tr><td><strong>낮음</strong></td><td>30~49점</td><td class="left">참고용 — 실측으로 교차 확인 권장</td></tr>
-        <tr><td><strong>매우 낮음</strong></td><td>30점 미만</td><td class="left">실측 필수 — 예측값만으로 판단 금지</td></tr>
-      </tbody>
-    </table>
-
-    <h3>4-5. 최적 제조량 산출</h3>
-    <p>이론 필요량에 로스율을 반영하여 최적 제조량을 산출합니다.</p>
-    <div class="formula">최적 제조량(g) = 이론 필요량 × (1 + 로스율 ÷ 100)</div>
-    <p>예시: 57,000g × (1 + 10.59% ÷ 100) = 57,000 × 1.1059 = <strong>63,036g</strong></p>
-
-    <div class="info-box">
-      <div class="label">폐기 데이터 보정 원리</div>
-      <div>현장에서 폐기된 벌크는 전산상 투입으로 기록되어 있지만 실제로는 사용되지 않은 양입니다.<br>따라서 폐기량을 투입량에서 차감하여 <strong>실제 사용량</strong> 기준으로 로스율을 계산합니다.</div>
-    </div>
-  </div>
-
-  <!-- 5. ML 예측 -->
-  <div class="section">
-    <h2 class="section-title"><span class="num">5</span> ML(머신러닝) 예측 비교</h2>
-    <p>결과 화면에서 <strong>"ML 예측 비교"</strong> 버튼을 클릭하면 머신러닝 기반의 로스율 및 제조량을 함께 확인할 수 있습니다.</p>
-    <p>ML 예측값은 SAP 예측값 <strong>바로 아래에 인라인</strong>으로 표시되어, 가로 스크롤 없이 한 화면에서 두 예측값을 동시에 비교할 수 있습니다. (ML 값은 <span style="color:#7c4dff;font-weight:700;">보라색</span>으로 구분 표시)</p>
-
-    <h3>5-1. ML 예측 방식</h3>
-    <p>과거 전체 SAP 실적 데이터 중 이상치를 제거한 <strong>42,408건</strong>을 <strong>Gradient Boosting</strong> 머신러닝 알고리즘으로 학습하여, 벌크코드별 + 제조량 구간별 예측 로스율을 산출합니다.</p>
-    <p>2026년 4월 기준 학습 결과: <strong>벌크 6,131종, 테스트 MAE(평균 절대 오차) 11.91%</strong></p>
-
-    <div class="info-box">
-      <div class="label">Gradient Boosting이란?</div>
-      <div>Gradient Boosting은 여러 개의 간단한 예측 모델(결정 트리)을 순차적으로 쌓아가면서, 이전 모델이 틀린 부분을 다음 모델이 보완하는 방식으로 학습하는 고성능 머신러닝 알고리즘입니다.<br>대용량 데이터를 빠르게 처리하면서도 높은 예측 정확도를 보여주어, 산업 현장의 수요 예측과 품질 분석에 널리 사용되고 있습니다.</div>
-    </div>
-
-    <h3>5-2. ML이 학습에 사용하는 변수</h3>
-    <p>ML 모델은 단순히 과거 로스율만 보는 것이 아니라, 로스에 영향을 주는 <strong>다양한 조건</strong>을 종합적으로 학습합니다.</p>
-
-    <table>
-      <thead>
-        <tr>
-          <th style="width:35%">학습 변수</th>
-          <th>설명</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td><strong>실적수량</strong></td><td class="left">실제 생산된 성형물 수량 (제조 규모)</td></tr>
-        <tr><td><strong>관리유형</strong></td><td class="left">제품의 관리 유형 분류 (관리유형별 로스 패턴 차이 반영)</td></tr>
-        <tr><td><strong>작업장</strong></td><td class="left">공장·설비가 결합된 작업장 정보 (예: 화성 자동 파우더 성형기2)</td></tr>
-        <tr><td><strong>벌크 평균 로스율</strong></td><td class="left">해당 벌크의 과거 평균 로스율</td></tr>
-        <tr><td><strong>벌크 로스율 표준편차</strong></td><td class="left">해당 벌크의 로스율 변동성 (편차가 클수록 예측이 어려움)</td></tr>
-        <tr><td><strong>벌크 로스율 중간값</strong></td><td class="left">해당 벌크의 로스율 중간값 (이상치에 덜 민감한 대표값)</td></tr>
-        <tr><td><strong>평균 단위당 표준소요량</strong></td><td class="left">성형물 1개당 벌크 투입량 평균 (제품 특성 반영)</td></tr>
-      </tbody>
-    </table>
-
-    <div class="info-box">
-      <div class="label">이력이 1건만 있는 품목의 ML 예측</div>
-      <div>SAP 방식은 그 1건의 로스율을 그대로 사용하지만, ML은 해당 벌크의 로스율뿐만 아니라 <strong>공장, 설비, 제조량 규모, 관리유형</strong> 등 조건을 종합적으로 반영하여 예측합니다.<br>따라서 이력이 적은 품목일수록 ML이 더 안정적인 예측값을 제공할 수 있습니다.<br>반대로, 그 1건이 정상적인 이력이었다면 SAP 방식이 현장 상황을 더 정확하게 반영할 수 있습니다.</div>
-    </div>
-
-    <h3>5-3. 제조량 구간별 로스율 경향</h3>
-    <p>제조량이 적을수록 로스율이 높아지는 패턴을 학습하여, 구간별로 다른 예측값을 제공합니다.</p>
-
-    <table>
-      <thead>
-        <tr>
-          <th>제조량 구간</th>
-          <th>3,000g</th>
-          <th>5,000g</th>
-          <th>10,000g</th>
-          <th>20,000g</th>
-          <th>30,000g</th>
-          <th>50,000g</th>
-          <th>100,000g</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>로스율 경향</strong></td>
-          <td>매우 높음</td>
-          <td>높음</td>
-          <td>보통</td>
-          <td>낮음</td>
-          <td>낮음</td>
-          <td>낮음</td>
-          <td>매우 낮음</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <p>이론 필요량에 가장 가까운 구간의 예측 로스율이 자동으로 적용됩니다.<br>예를 들어, 이론 필요량이 57,000g이면 50,000g 구간의 로스율이 사용됩니다.</p>
-
-    <h3>5-4. SAP 방식 vs ML 방식 비교</h3>
-    <table>
-      <thead>
-        <tr>
-          <th style="width:25%">구분</th>
-          <th style="width:37%">SAP 방식 (기본)</th>
-          <th style="width:38%">ML 방식 (참고)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>로스율 기준</strong></td>
-          <td class="left">최근 5건의 가중평균 로스율</td>
-          <td class="left">전체 이력 + 다양한 조건 학습 결과</td>
-        </tr>
-        <tr>
-          <td><strong>제조량 반영</strong></td>
-          <td class="left">반영하지 않음</td>
-          <td class="left">제조량 구간별 다른 로스율 적용</td>
-        </tr>
-        <tr>
-          <td><strong>장점</strong></td>
-          <td class="left">최근 현장 상황이 즉시 반영됨<br>(이상치 1건의 영향 감소)</td>
-          <td class="left">제조량/작업장/관리유형 등 다양한 조건 반영</td>
-        </tr>
-        <tr>
-          <td><strong>이력 없을 때</strong></td>
-          <td class="left">"-" 표시 (예측 불가)</td>
-          <td class="left">"-" 표시 (학습 데이터 없음)</td>
-        </tr>
-        <tr>
-          <td><strong>이력 1건일 때</strong></td>
-          <td class="left">그 1건의 로스율을 사용 (신뢰도 낮음 표시)</td>
-          <td class="left">1건의 로스율 + 작업장/관리유형/제조량 등 조건을 종합하여 예측</td>
-        </tr>
-        <tr>
-          <td><strong>활용</strong></td>
-          <td class="left">기본 예측값으로 사용</td>
-          <td class="left">교차 검증용 참고값으로 활용</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- 6. 결과 화면 -->
-  <div class="section">
-    <h2 class="section-title"><span class="num">6</span> 결과 화면 안내</h2>
-
-    <h3>6-1. 결과 테이블 항목</h3>
+    <h3>5-1. 결과 테이블 항목</h3>
     <table>
       <thead>
         <tr>
@@ -559,117 +407,129 @@
       </thead>
       <tbody>
         <tr><td><strong>성형물 코드/명</strong></td><td class="left">BOM에서 추출된 성형물 정보</td></tr>
-        <tr><td><strong>벌크 코드/명</strong></td><td class="left">해당 성형물에 사용되는 벌크 정보</td></tr>
-        <tr><td><strong>투입량(g)</strong></td><td class="left">BOM 기준 성형물 1개당 벌크 투입량 (소수점 셋째자리까지 표시)</td></tr>
-        <tr><td><strong>필요 수량(ea)</strong></td><td class="left">완제품 발주 수량 기준 성형물 필요 수량</td></tr>
-        <tr><td><strong>가용 재고(ea)</strong></td><td class="left">현재 보유 중인 성형물 재고 (동일 홋수 내 2-code 다수면 합산)</td></tr>
-        <tr><td><strong>최종 수량(ea)</strong></td><td class="left">필요 수량 − 가용 재고 (실제 제조가 필요한 성형물 수량)</td></tr>
+        <tr><td><strong>벌크 코드/명</strong></td><td class="left">해당 성형물에 사용되는 벌크</td></tr>
+        <tr><td><strong>투입량(g)</strong></td><td class="left">성형물 1개당 벌크 투입량</td></tr>
+        <tr><td><strong>필요 수량(ea)</strong></td><td class="left">발주 수량 기준 성형물 필요 수량</td></tr>
+        <tr><td><strong>가용 재고(ea)</strong></td><td class="left">현재 보유 중인 성형물 재고 (동일 홋수 다수면 합산)</td></tr>
+        <tr><td><strong>최종 수량(ea)</strong></td><td class="left">필요 수량 − 가용 재고 (실제 제조가 필요한 수량)</td></tr>
         <tr><td><strong>이론 필요량(g)</strong></td><td class="left">최종 수량 × 투입량 (로스 미반영)</td></tr>
-        <tr><td><strong>평균 로스율</strong></td><td class="left">SAP 실적 기반 최근 5건 가중평균 로스율 (소수점 둘째자리까지 표시). ML 예측값이 보라색으로 인라인 표시됨</td></tr>
-        <tr><td><strong>최적 제조량(g)</strong></td><td class="left">이론 필요량에 로스율을 반영한 최종 제조 권장량. ML 기반 제조량이 보라색으로 인라인 표시됨</td></tr>
-        <tr><td><strong>신뢰도</strong></td><td class="left">등급 배지(높음/보통/낮음/매우 낮음) + 점수(0~100). 마우스 오버 시 표본수·편차·최신성 상세 확인</td></tr>
+        <tr><td><strong>평균 로스율</strong></td><td class="left">최근 5건 평균 로스율. 보라색 값은 ML 예측 (참고용)</td></tr>
+        <tr><td><strong>최적 제조량(g)</strong></td><td class="left">로스율을 반영한 최종 제조 권장량. 보라색은 ML 기반</td></tr>
+        <tr><td><strong>신뢰도</strong></td><td class="left">예측 신뢰 등급 + 점수 (마우스 오버 시 상세)</td></tr>
       </tbody>
     </table>
 
-    <h3>6-2. 시각적 강조 표시</h3>
-    <ul>
-      <li><strong>저신뢰도 행 색상 강조</strong>
-        <ul style="margin-top:3px">
-          <li>신뢰도 "낮음" → 옅은 주황 배경</li>
-          <li>신뢰도 "매우 낮음" → 옅은 빨강 배경 + 실측 권장</li>
-        </ul>
-      </li>
-      <li><strong>ML vs SAP 예측 차이 강조</strong>
-        <ul style="margin-top:3px">
-          <li>5%p 이상 차이 → 노랑 강조</li>
-          <li>10%p 이상 차이 → 빨강 강조 (둘 중 하나가 크게 벗어남)</li>
-        </ul>
-      </li>
-      <li><strong>5건 가중평균 그룹 표시</strong> — 이력 모달에서 로스율 계산에 사용된 최근 5건을 외곽 테두리로 강조</li>
-      <li><strong>가중평균 계산 툴팁</strong> — 평균 로스율 셀에 마우스 오버 시 5건 각각의 가중치와 계산 과정 표시</li>
-    </ul>
+    <h3>5-2. 색상 강조의 의미</h3>
+    <p>결과 테이블의 색상 강조는 행동 가이드 역할을 합니다. 색상을 보고 어떻게 처리할지 빠르게 판단할 수 있습니다.</p>
 
-    <h3>6-3. 결과 정렬</h3>
-    <p>결과 테이블 상단의 드롭다운으로 정렬 기준을 선택할 수 있습니다.</p>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30%">색상</th>
+          <th>의미</th>
+          <th style="width:30%">권장 행동</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>옅은 주황색 행</td><td class="left">신뢰도 "낮음" — 이력 부족 또는 편차 큼</td><td class="left">실측으로 교차 확인</td></tr>
+        <tr><td>옅은 빨강색 행</td><td class="left">신뢰도 "매우 낮음" — 예측만으로 판단 위험</td><td class="left"><strong>실측 필수</strong></td></tr>
+        <tr><td>노랑 강조 (로스율 셀)</td><td class="left">SAP와 ML 예측 차이 5%p 이상</td><td class="left">두 값 비교 후 판단</td></tr>
+        <tr><td>빨강 강조 (로스율 셀)</td><td class="left">SAP와 ML 예측 차이 10%p 이상</td><td class="left">신중히 검토 후 결정</td></tr>
+        <tr><td><span style="color:#7c4dff;font-weight:700;">보라색 글자</span></td><td class="left">ML 예측값 (SAP 값 아래 인라인 표시)</td><td class="left">참고용으로 활용</td></tr>
+      </tbody>
+    </table>
+
+    <h3>5-3. 신뢰도 등급별 행동 가이드</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:18%">등급</th>
+          <th>의미</th>
+          <th style="width:35%">권장 행동</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>높음</strong></td><td class="left">표본 충분 + 편차 작음 + 최신 이력</td><td class="left">예측값 그대로 활용 가능</td></tr>
+        <tr><td><strong>보통</strong></td><td class="left">조건 일부 충족</td><td class="left">활용 가능하나 큰 발주 시 주의</td></tr>
+        <tr><td><strong>낮음</strong></td><td class="left">표본 부족 또는 편차 큼</td><td class="left">참고용. 실측으로 교차 확인 권장</td></tr>
+        <tr><td><strong>매우 낮음</strong></td><td class="left">표본 1~2건 또는 편차 매우 큼</td><td class="left"><strong>실측 필수</strong>. 예측값만으로 판단 금지</td></tr>
+      </tbody>
+    </table>
+
+    <h3>5-4. 결과 정렬</h3>
+    <p>결과 테이블 상단의 드롭다운으로 정렬 기준을 변경할 수 있습니다.</p>
     <ul>
       <li>기본 순서 (BOM 순)</li>
-      <li>신뢰도 낮은 순 / 높은 순 (저신뢰도 품목 우선 확인용)</li>
+      <li>신뢰도 낮은 순 / 높은 순 — 저신뢰도 품목을 먼저 확인할 때</li>
       <li>제조량 많은 순 / 적은 순</li>
       <li>로스율 높은 순 / 낮은 순</li>
     </ul>
 
-    <h3>6-4. 이력 조회</h3>
-    <p>결과 테이블의 각 행을 <strong>더블클릭</strong>하면 해당 벌크의 과거 제조 이력을 모달에서 확인할 수 있습니다. (화면의 75% 크기로 확대 표시)<br>제조일, 지시수량, 실적수량, 표준소요량, 투입소요량, 폐기 정보, 보정 후 투입량 등이 표시되며, 로스율 계산에 사용된 최근 5건은 외곽 테두리로 강조됩니다.</p>
+    <h3>5-5. 과거 이력 조회</h3>
+    <p>결과 테이블의 행을 <strong>더블클릭</strong>하면 해당 벌크의 과거 제조 이력 모달이 열립니다. 제조일·실적수량·표준소요량·투입소요량·폐기 정보·보정 후 투입량을 확인할 수 있으며, 로스율 계산에 사용된 <strong>최근 5건은 외곽 테두리로 강조</strong>됩니다.</p>
+    <p>평균 로스율 셀에 <strong>마우스를 올리면</strong> 5건 각각의 가중치와 계산 과정이 툴팁으로 표시됩니다.</p>
 
-    <h3>6-5. 결과 내보내기</h3>
-    <ul>
-      <li><strong>엑셀 다운로드</strong> — 결과를 XLSX 파일로 다운로드</li>
-      <li><strong>CSV 다운로드</strong> — 결과를 CSV 파일로 다운로드</li>
-    </ul>
-    <p style="margin-top:8px">엑셀 파일에는 화면의 기본 컬럼(성형물/벌크/투입량/필요수량/이론 필요량/평균 로스율/최적 제조량) 외에 <strong>신뢰도 관련 5개 컬럼</strong>이 추가됩니다:</p>
-    <ul>
-      <li>신뢰도 등급</li>
-      <li>신뢰도 점수 (0~100)</li>
-      <li>유효 표본수 (몇 건의 이력이 가중평균에 사용됐는지)</li>
-      <li>편차(%) — 로스율 표준편차</li>
-      <li>최신 이력(일전) — 가장 최근 이력이 며칠 전인지</li>
-    </ul>
+    <h3>5-6. ML 예측 비교</h3>
+    <p>결과 화면 상단의 <strong>"ML 예측 비교"</strong> 버튼을 누르면 ML 기반 로스율과 제조량이 SAP 값 바로 아래에 <strong>보라색</strong>으로 인라인 표시됩니다. 가로 스크롤 없이 한 화면에서 두 예측값을 동시에 확인할 수 있습니다.</p>
+    <p>SAP 방식은 최근 5건의 가중평균을 사용하고, ML 방식은 더 많은 과거 데이터와 다양한 조건(작업장, 제조량 규모 등)을 학습한 결과를 반영합니다. <strong>SAP 방식을 기본값</strong>으로 사용하되, 차이가 클 때 ML 값으로 교차 검증해 보시면 됩니다.</p>
   </div>
 
-  <!-- 7. 참고사항 -->
+  <!-- 6. 결과 내보내기 -->
   <div class="section">
-    <h2 class="section-title"><span class="num">7</span> 참고사항 및 주의점</h2>
+    <h2 class="section-title"><span class="num">6</span> 결과 내보내기</h2>
+    <p>결과 화면 상단의 다운로드 버튼으로 파일을 받을 수 있습니다.</p>
 
-    <div class="info-box">
-      <div class="label">데이터 업로드 순서</div>
-      <div>3가지 파일의 업로드 순서는 자유입니다.<br>단, <strong>"벌크 필요량 계산" 버튼을 누르기 전에</strong> 표준 대비 실적 데이터가 업로드되어 있어야 로스율이 반영됩니다.</div>
-    </div>
+    <ul>
+      <li><strong>엑셀 다운로드</strong> — XLSX 파일</li>
+      <li><strong>CSV 다운로드</strong> — CSV 파일</li>
+    </ul>
 
-    <div class="info-box">
-      <div class="label">데이터 자동 저장 (IndexedDB)</div>
-      <div>업로드된 SAP 및 환입·폐기 데이터는 브라우저의 IndexedDB에 자동 저장됩니다.<br>페이지를 닫았다 다시 열어도 데이터가 자동 복원되므로 매번 재업로드할 필요가 없습니다.<br>다른 기간의 데이터로 교체하려면 전체 초기화 또는 해당 파일 재업로드를 사용하세요.</div>
-    </div>
+    <p style="margin-top:8px">엑셀 파일에는 화면 기본 컬럼 외에 <strong>신뢰도 상세 정보</strong>가 추가로 포함됩니다.</p>
+    <ul>
+      <li>신뢰도 등급 / 점수</li>
+      <li>유효 표본 수 (몇 건의 이력이 가중평균에 사용됐는지)</li>
+      <li>로스율 편차(%)</li>
+      <li>최신 이력(일전)</li>
+    </ul>
+    <p style="margin-top:8px;color:#777;font-size:9pt">※ 회의자료나 보고용으로 활용 시 엑셀 다운로드를 권장합니다 (서식 + 신뢰도 정보 포함).</p>
+  </div>
 
-    <div class="info-box">
-      <div class="label">BOM만 초기화 버튼</div>
-      <div>BOM 데이터만 바꾸고 싶을 때 사용합니다. 표준 대비 실적 / 벌크 폐기 데이터는 그대로 유지되므로, 기존 이력을 유지한 채 새로운 발주 건만 계산할 때 편리합니다.</div>
-    </div>
+  <!-- 7. 자주 묻는 질문 -->
+  <div class="section">
+    <h2 class="section-title"><span class="num">7</span> 자주 묻는 질문</h2>
 
-    <div class="info-box">
-      <div class="label">로스율 "-" 표시</div>
-      <div>해당 성형물-벌크 조합의 유효한 과거 이력이 없는 경우 로스율과 최적 제조량이 "-"로 표시됩니다.<br>실적 데이터가 축적되면 자동으로 로스율이 산출됩니다.</div>
-    </div>
+    <p><strong>Q. 로그인 후 페이지가 갑자기 로그인 화면으로 돌아갔어요.</strong></p>
+    <p>A. 로그인 후 <strong>8시간이 지나면 자동 로그아웃</strong>됩니다. 다시 로그인하면 됩니다. (작업 중인 BOM은 다시 업로드 필요)</p>
 
-    <div class="info-box">
-      <div class="label">신뢰도 "매우 낮음" 품목 취급</div>
-      <div>신뢰도 30점 미만("매우 낮음")인 품목은 표본이 부족하거나 로스율 편차가 큰 경우입니다.<br>예측값을 그대로 쓰지 말고 <strong>실측으로 교차 확인</strong>하거나, ML 예측값과 비교 후 판단하세요.</div>
-    </div>
+    <p><strong>Q. 로스율이 "-"로 표시됩니다.</strong></p>
+    <p>A. 해당 성형물-벌크 조합의 과거 이력이 없는 경우입니다. 실적이 축적되면 자동으로 로스율이 산출됩니다.</p>
 
-    <h3>자주 묻는 질문</h3>
+    <p><strong>Q. 신뢰도가 "낮음" 또는 "매우 낮음"으로 나왔는데 어떻게 해야 하나요?</strong></p>
+    <p>A. 표본이 부족하거나 로스율 편차가 큰 품목입니다. 예측값을 그대로 쓰지 말고 <strong>실측 또는 ML 예측값</strong>과 교차 확인하세요. 이력이 축적되면 자동으로 등급이 상승합니다.</p>
 
-    <p><strong>Q. 투입량이 변경되면 어떻게 하나요?</strong></p>
-    <p>A. BOM 데이터가 최신 투입량을 반영하고 있으면 자동으로 적용됩니다.<br>프로그램은 BOM에 기재된 투입량을 기준으로 이론 필요량을 계산합니다.</p>
+    <p><strong>Q. SAP와 ML 예측값이 크게 차이납니다.</strong></p>
+    <p>A. 5%p 이상 차이는 노랑, 10%p 이상은 빨강으로 강조됩니다. <strong>SAP 값(기본)</strong>을 우선하되, 차이가 크면 행을 더블클릭해 과거 이력을 확인하고 신중히 판단하세요. 이력이 1건뿐인 경우에는 ML이 더 안정적일 수 있습니다.</p>
 
-    <p><strong>Q. 폐기 데이터는 얼마나 자주 업데이트해야 하나요?</strong></p>
-    <p>A. 매주 월요일 지난주 폐기 데이터를 전달받아 업데이트하는 것을 권장합니다.</p>
-
-    <p><strong>Q. ML 예측과 SAP 예측 중 어떤 값을 사용해야 하나요?</strong></p>
-    <p>A. <strong>SAP 방식(기본)</strong>을 우선 사용하되, ML 예측은 참고값으로 교차 검증하는 용도로 활용하시기 바랍니다.</p>
-
-    <p><strong>Q. 소수점 셋째자리 투입량도 정확히 반영되나요?</strong></p>
-    <p>A. 네, 투입량은 소수점 셋째자리까지 정밀하게 계산에 반영됩니다.<br>여러 색상의 벌크를 비율로 분배하는 경우에도 정확한 예측이 가능합니다.</p>
-
-    <p><strong>Q. 신뢰도 점수가 낮게 나왔는데 믿어도 되나요?</strong></p>
-    <p>A. 신뢰도 "낮음"(30~49점) 이하는 <strong>참고용</strong>입니다. 실측 또는 ML 예측과 교차 확인하여 최종 판단하세요. 이력이 축적되면 자동으로 신뢰도가 상승합니다.</p>
+    <p><strong>Q. 표준대비실적 / 벌크폐기 데이터를 직접 업로드해야 하나요?</strong></p>
+    <p>A. 평소에는 필요 없습니다. 운영자가 새 데이터를 갱신하면 페이지 새로고침 시 자동으로 다운로드됩니다. <strong>특정 일자 데이터로 점검할 때만</strong> 임시로 수동 업로드하면 되며, 다음 새로고침 시 서버 데이터로 복원됩니다.</p>
 
     <p><strong>Q. 페이지를 닫으면 업로드한 데이터가 사라지나요?</strong></p>
-    <p>A. 아닙니다. 업로드된 SAP 및 환입·폐기 데이터는 브라우저 IndexedDB에 자동 저장되어 페이지 재접속 시 자동 복원됩니다. 새 데이터로 교체하려면 해당 파일을 재업로드하거나 전체 초기화 버튼을 사용하세요.</p>
+    <p>A. 표준대비실적·벌크폐기 데이터는 브라우저에 자동 저장되어 다음 접속 시 즉시 복원됩니다. <strong>BOM 데이터만 매번 업로드</strong>하면 됩니다.</p>
 
-    <p><strong>Q. 과거엔 최신 1건만 썼는데 왜 5건 가중평균으로 바뀌었나요?</strong></p>
-    <p>A. 단일 최근 이력이 이상값(특수 조건·측정 오차 등)이면 예측이 크게 왜곡될 수 있습니다. 최근 5건 가중평균은 최신성을 유지하면서도 이상치 1건의 영향을 줄여 더 안정적인 예측을 제공합니다.</p>
+    <p><strong>Q. SAP에 APO와 ERP가 동시 로그인되어 있는데 SAP_BOM조회.vbs가 잘 동작하나요?</strong></p>
+    <p>A. 네, 자동으로 ERP 연결을 식별하여 동작합니다. DEV/QAS/PRD가 동시 로그인된 경우는 운영(PRD)을 우선 선택합니다.</p>
+
+    <p><strong>Q. 다른 부서에서 받은 BOM 파일을 사용해도 되나요?</strong></p>
+    <p>A. 네, "투입수량" 컬럼이 없으면 "소요수량" 컬럼을 자동으로 사용합니다. 단, 필수 컬럼(Lev, MTyp, 자재, 자재내역)은 반드시 포함되어 있어야 합니다.</p>
+
+    <p><strong>Q. 소수점 셋째자리 투입량도 정확히 반영되나요?</strong></p>
+    <p>A. 네, 소수점 셋째자리까지 정밀하게 계산됩니다. 여러 색상의 벌크를 비율로 분배하는 경우에도 정확한 예측이 가능합니다.</p>
+
+    <p><strong>Q. 데이터가 이상하게 보일 때는 어떻게 하나요?</strong></p>
+    <p>A. 화면의 <strong>"전체 초기화"</strong> 버튼 → 페이지 새로고침을 한 번 시도해 보세요. 캐시가 비워지고 서버에서 새로 받아옵니다. 그래도 해결되지 않으면 관리자에게 문의해 주세요.</p>
 
     <div class="footer">
-      COSMAX 생산3팀 | 파우더 벌크 제조량 예측 프로그램 v2.0 | 2026.04
+      COSMAX 생산3팀 | 파우더 벌크 제조량 예측 프로그램 v2.2 | 2026.05
     </div>
   </div>
 
